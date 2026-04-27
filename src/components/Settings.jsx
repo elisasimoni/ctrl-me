@@ -1,11 +1,16 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useT } from '../i18n.jsx';
+import { loadMemory, removeFact, clearMemory } from '../native/memory.js';
+import { isLlmEnabled } from '../lib/llm.js';
 
 export function Settings({ open, onClose, store }) {
   const { t, lang, setLang } = useT();
+  const [, forceRender] = useState(0);
   if (!open) return null;
   const { state, setPref, reset } = store;
   const isDark = state.prefs.direction === 'A';
+  const mem = loadMemory();
+  const hasFacts = mem.facts.length > 0;
 
   return (
     <div onClick={onClose} style={{
@@ -71,6 +76,47 @@ export function Settings({ open, onClose, store }) {
             onChange={v => setPref('personality', v)}
           />
         </Section>
+
+        {isLlmEnabled() && (
+          <Section label={lang === 'it' ? 'Cosa so di te' : 'What I know about you'} isDark={isDark}>
+            {hasFacts ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {mem.facts.map((f, i) => (
+                  <div key={i} style={{
+                    display: 'flex', alignItems: 'center', gap: 8,
+                    padding: '8px 12px', borderRadius: isDark ? 8 : 12,
+                    background: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)',
+                  }}>
+                    <span className={isDark ? 'mono' : 'tight'} style={{
+                      flex: 1, fontSize: isDark ? 11 : 13,
+                      color: isDark ? 'rgba(245,245,242,0.8)' : 'rgba(13,13,13,0.8)',
+                    }}>· {f}</span>
+                    <button onClick={() => { removeFact(i); forceRender(n => n+1); }} style={{
+                      background: 'none', border: 'none', cursor: 'pointer',
+                      color: isDark ? 'rgba(245,245,242,0.4)' : 'rgba(13,13,13,0.35)',
+                      fontSize: 16, lineHeight: 1, padding: '0 2px',
+                    }}>×</button>
+                  </div>
+                ))}
+                <button onClick={() => { clearMemory(); forceRender(n => n+1); }} className={isDark ? 'mono' : 'tight'} style={{
+                  marginTop: 4, height: 36, borderRadius: isDark ? 8 : 100,
+                  border: isDark ? '1px solid rgba(255,255,255,0.12)' : '1.5px solid rgba(0,0,0,0.1)',
+                  background: 'transparent', color: isDark ? 'rgba(245,245,242,0.5)' : 'rgba(13,13,13,0.45)',
+                  cursor: 'pointer', fontSize: isDark ? 10 : 12,
+                  letterSpacing: isDark ? '0.08em' : '-0.01em',
+                  textTransform: isDark ? 'uppercase' : 'none',
+                }}>{lang === 'it' ? 'Cancella tutto' : 'Clear all'}</button>
+              </div>
+            ) : (
+              <div className={isDark ? 'mono' : 'tight'} style={{
+                fontSize: isDark ? 11 : 13,
+                color: isDark ? 'rgba(245,245,242,0.4)' : 'rgba(13,13,13,0.4)',
+              }}>
+                {lang === 'it' ? 'Ancora niente — aggiungi qualche reminder.' : 'Nothing yet — add some reminders.'}
+              </div>
+            )}
+          </Section>
+        )}
 
         <button onClick={() => { reset(); onClose(); }} className={isDark ? 'mono' : 'tight'} style={{
           width: '100%', marginTop: 28, height: 48,
