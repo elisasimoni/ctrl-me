@@ -262,9 +262,9 @@ export function B_Home({ store, onCompose, onSettings, onAddReminder }) {
                 }}>
                 <div style={{ width: 52, flexShrink: 0 }}>
                   <div className="tight" style={{
-                    fontSize: 19, fontWeight: 700, letterSpacing: '-0.03em',
+                    fontSize: item.time ? 19 : 14, fontWeight: 700, letterSpacing: '-0.03em',
                     color: isDone ? DIM : INK, lineHeight: 1, fontVariantNumeric: 'tabular-nums',
-                  }}>{item.time}</div>
+                  }}>{item.time ?? '—'}</div>
                   <div className="serif-it" style={{ fontSize: 11.5, color: DIM, marginTop: 3 }}>
                     {t(`when.${item.when}`)}
                   </div>

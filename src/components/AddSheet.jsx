@@ -105,7 +105,7 @@ export function AddSheet({ open, onClose, onAdd, personality, theme }) {
         setAnalysis(result);
         setLoading(false);
       } else {
-        onAdd({ icon: result.icon, tag: result.tag, title: result.title, body: result.body });
+        onAdd({ icon: result.icon, tag: result.tag, title: result.title, body: result.body, time: result.time, when: result.when });
         onClose();
       }
     } catch (e) {
@@ -116,6 +116,8 @@ export function AddSheet({ open, onClose, onAdd, personality, theme }) {
         body: localBody({ icon: meta.icon, personality, lang }),
         icon: meta.icon,
         tag: meta.tag,
+        time: null, // no time info without LLM
+        when: 'later',
       });
       onClose();
     }
@@ -125,17 +127,17 @@ export function AddSheet({ open, onClose, onAdd, personality, theme }) {
     if (!analysis) return;
     const merged = extra.trim() ? `${text} — ${extra.trim()}` : text;
     if (!extra.trim()) {
-      onAdd({ icon: analysis.icon, tag: analysis.tag, title: analysis.title, body: analysis.body });
+      onAdd({ icon: analysis.icon, tag: analysis.tag, title: analysis.title, body: analysis.body, time: analysis.time, when: analysis.when });
       onClose();
       return;
     }
     setLoading(true);
     try {
       const result = await analyzeReminder({ text: merged, lang, personality });
-      onAdd({ icon: result.icon, tag: result.tag, title: result.title, body: result.body });
+      onAdd({ icon: result.icon, tag: result.tag, title: result.title, body: result.body, time: result.time, when: result.when });
       onClose();
     } catch (e) {
-      onAdd({ icon: analysis.icon, tag: analysis.tag, title: analysis.title, body: analysis.body });
+      onAdd({ icon: analysis.icon, tag: analysis.tag, title: analysis.title, body: analysis.body, time: analysis.time, when: analysis.when });
       onClose();
     }
   };

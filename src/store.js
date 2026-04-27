@@ -89,7 +89,7 @@ export function useStore(t, lang) {
         ...s.reminders,
         {
           id: Date.now(),
-          time: partial.time ?? new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }),
+          time: partial.time ?? null,
           when: partial.when ?? 'later',
           icon: partial.icon ?? 'spark',
           tag: partial.tag ?? 'NOTE',
