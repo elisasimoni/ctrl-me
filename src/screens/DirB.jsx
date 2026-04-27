@@ -297,7 +297,7 @@ export function B_Home({ store, onCompose, onSettings, onAddReminder }) {
                       <Icon name="pin" size={11} stroke={INK_SOFT} /> {lang === 'it' ? 'Apri Maps' : 'Open Maps'}
                     </button>
                   )}
-                  {!isDone && (
+                  {false && !isDone && (
                     <button
                       onClick={e => { e.stopPropagation(); addToCalendar({ title: item.title, body: item.body, startAt: Date.now() + 60000 }); }}
                       className="tight"
