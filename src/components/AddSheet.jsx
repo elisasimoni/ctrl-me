@@ -75,7 +75,7 @@ export function AddSheet({ open, onClose, onAdd, personality, theme }) {
 
   useEffect(() => {
     if (open) setTimeout(() => ref.current?.focus(), 100);
-    else { setText(''); setAnalysis(null); setError(null); setExtra(''); }
+    else { setText(''); setAnalysis(null); setError(null); setExtra(''); setLoading(false); }
   }, [open]);
 
   if (!open) return null;
