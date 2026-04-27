@@ -4,15 +4,42 @@ import { useT } from '../i18n.jsx';
 import { analyzeReminder, isLlmEnabled } from '../lib/llm.js';
 
 // Local fallback parser — runs when no API key is configured.
+// Cleans title, extracts time, picks icon — without LLM.
 function parseLocal(text) {
   const t = text.toLowerCase();
-  if (/(rain|umbrella|weather|cloud|piov|piogg|ombrell|meteo|nuvol)/.test(t)) return { icon: 'rain', tag: 'WEATHER' };
-  if (/(pill|med|vitamin|drug|pillol|farmac|medicin)/.test(t))                return { icon: 'pill', tag: 'PILL · DAILY' };
-  if (/(exam|class|building|room|school|esame|aula|edificio|scuol|lezion)/.test(t)) return { icon: 'pin', tag: 'PLACE' };
-  if (/(\$|€|budget|spend|takeout|money|sold|spes|euro|denar)/.test(t))       return { icon: 'wallet', tag: 'BUDGET' };
-  if (/(birthday|gift|present|complean|regal)/.test(t))                       return { icon: 'spark', tag: 'BIRTHDAY' };
-  if (/(sleep|bed|night|sonno|letto|nott|dorm)/.test(t))                      return { icon: 'moon', tag: 'NIGHT' };
-  return { icon: 'spark', tag: 'NOTE' };
+
+  // Extract time ("alle 9", "at 9", "9am", "9:15", "alle 9:30")
+  const timeMatch = t.match(/(?:alle?|at)\s*(\d{1,2})(?::(\d{2}))?|(\d{1,2}):(\d{2})/);
+  let time = null, when = 'later';
+  if (timeMatch) {
+    const h = parseInt(timeMatch[1] ?? timeMatch[3]);
+    const m = parseInt(timeMatch[2] ?? timeMatch[4] ?? '0');
+    if (h >= 0 && h <= 23) {
+      time = `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
+      when = h < 12 ? 'morning' : h === 12 ? 'noon' : h < 18 ? 'afternoon' : 'evening';
+    }
+  }
+
+  // Strip common preambles
+  let title = text
+    .replace(/^(ricordami\s+(di\s+)?|remember\s+(me\s+)?(to\s+)?|remind\s+me\s+(to\s+)?)/i, '')
+    .replace(/\s+(tutti i giorni|ogni giorno|every day|daily)\s*/i, ' ')
+    .trim();
+  // Capitalize first letter, max ~40 chars, add period
+  title = title.charAt(0).toUpperCase() + title.slice(1);
+  if (!title.endsWith('.')) title += '.';
+  if (title.length > 42) title = title.slice(0, 40).trim() + '…';
+
+  // Icon
+  let icon = 'spark', tag = 'NOTE';
+  if (/(rain|umbrella|weather|cloud|piov|piogg|ombrell|meteo|nuvol)/.test(t)) { icon = 'rain'; tag = 'METEO'; }
+  else if (/(pill|med|vitamin|drug|pillol|farmac|medicin)/.test(t))            { icon = 'pill'; tag = 'PILLOLA · OGNI GIORNO'; }
+  else if (/(exam|class|building|room|school|esame|aula|edificio|lezion)/.test(t)) { icon = 'pin'; tag = 'LUOGO'; }
+  else if (/(\$|€|budget|spend|takeout|money|spes|euro|denar)/.test(t))        { icon = 'wallet'; tag = 'BUDGET'; }
+  else if (/(birthday|gift|complean|regal)/.test(t))                           { icon = 'spark'; tag = 'COMPLEANNO'; }
+  else if (/(sleep|bed|night|sonno|letto|dorm)/.test(t))                       { icon = 'moon'; tag = 'NOTTE'; }
+
+  return { icon, tag, time, when, title };
 }
 
 const LOCAL_BODIES = {
@@ -112,12 +139,12 @@ export function AddSheet({ open, onClose, onAdd, personality, theme }) {
       console.error('[CTRL+Me] LLM call failed, falling back:', e);
       const meta = parseLocal(trimmed);
       onAdd({
-        title: trimmed.charAt(0).toUpperCase() + trimmed.slice(1),
+        title: meta.title,
         body: localBody({ icon: meta.icon, personality, lang }),
         icon: meta.icon,
         tag: meta.tag,
-        time: null, // no time info without LLM
-        when: 'later',
+        time: meta.time,
+        when: meta.when,
       });
       onClose();
     }
