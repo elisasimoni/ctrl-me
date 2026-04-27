@@ -42,7 +42,11 @@ function load() {
 export function useStore(t, lang) {
   const [state, setState] = useState(() => {
     const loaded = load();
-    if (loaded?.reminders) return loaded;
+    // Already onboarded → use persisted reminders (empty list if they deleted everything)
+    if (loaded?.prefs?.onboarded) {
+      return { reminders: loaded.reminders ?? [], prefs: { ...DEFAULT_PREFS, ...loaded.prefs } };
+    }
+    // Not yet onboarded → show seeds as preview inside onboarding
     return { reminders: buildSeed(t), prefs: { ...DEFAULT_PREFS, ...(loaded?.prefs ?? {}) } };
   });
 
@@ -99,7 +103,14 @@ export function useStore(t, lang) {
   }, []);
 
   const setPref = useCallback((key, value) => {
-    setState(s => ({ ...s, prefs: { ...s.prefs, [key]: value } }));
+    setState(s => {
+      const newPrefs = { ...s.prefs, [key]: value };
+      // Completing onboarding → wipe seeds, start with empty list
+      if (key === 'onboarded' && value === true) {
+        return { ...s, prefs: newPrefs, reminders: s.reminders.filter(r => !r.seed) };
+      }
+      return { ...s, prefs: newPrefs };
+    });
   }, []);
 
   const reset = useCallback(() => {
