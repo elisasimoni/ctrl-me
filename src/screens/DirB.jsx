@@ -1,6 +1,9 @@
 import React, { useState } from 'react';
 import { Icon, Pebble } from '../atoms.jsx';
 import { useT, formatDate } from '../i18n.jsx';
+import { WeatherBanner } from '../components/WeatherBanner.jsx';
+import { openMaps } from '../native/maps.js';
+import { addToCalendar } from '../native/calendar.js';
 
 const PAPER = '#f4f1ec';
 const PAPER_DEEP = '#ebe6dd';
@@ -164,7 +167,7 @@ function Tag({ children }) {
 }
 
 // ─── Home ──────────────────────────────────────────────────
-export function B_Home({ store, onCompose, onSettings }) {
+export function B_Home({ store, onCompose, onSettings, onAddReminder }) {
   const { t, lang } = useT();
   const { state, toggleDone, snooze } = store;
   const items = state.reminders;
@@ -227,7 +230,9 @@ export function B_Home({ store, onCompose, onSettings }) {
         </div>
       </div>
 
-      <div className="cm-feed" style={{ position: 'absolute', top: 248, left: 0, right: 0, bottom: 110, overflow: 'auto', padding: '4px 16px 8px' }}>
+      <WeatherBanner theme="B" onAddReminder={onAddReminder} />
+
+      <div className="cm-feed" style={{ position: 'absolute', top: 268, left: 0, right: 0, bottom: 110, overflow: 'auto', padding: '4px 16px 8px' }}>
         {items.map(item => {
           const isDone = item.done;
           const dx = drag.id === item.id ? drag.dx : 0;
@@ -279,6 +284,33 @@ export function B_Home({ store, onCompose, onSettings }) {
                   <div className="tight" style={{
                     fontSize: 13, color: isDone ? DIM : INK_SOFT, lineHeight: 1.4, letterSpacing: '-0.005em',
                   }}>{item.body}</div>
+                  {!isDone && (item.icon === 'pin' || item.location) && (
+                    <button
+                      onClick={e => { e.stopPropagation(); openMaps(item.location || item.title); }}
+                      className="tight"
+                      style={{
+                        marginTop: 8, padding: '4px 10px', borderRadius: 100,
+                        border: `1px solid ${HAIR}`, background: 'transparent',
+                        color: INK_SOFT, cursor: 'pointer',
+                        fontSize: 11, fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 5,
+                      }}>
+                      <Icon name="pin" size={11} stroke={INK_SOFT} /> {lang === 'it' ? 'Apri Maps' : 'Open Maps'}
+                    </button>
+                  )}
+                  {!isDone && (
+                    <button
+                      onClick={e => { e.stopPropagation(); addToCalendar({ title: item.title, body: item.body, startAt: Date.now() + 60000 }); }}
+                      className="tight"
+                      style={{
+                        marginTop: 8, marginLeft: item.icon === 'pin' ? 6 : 0,
+                        padding: '4px 10px', borderRadius: 100,
+                        border: `1px solid ${HAIR}`, background: 'transparent',
+                        color: INK_SOFT, cursor: 'pointer',
+                        fontSize: 11, fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 5,
+                      }}>
+                      <Icon name="spark" size={11} stroke={INK_SOFT} /> {lang === 'it' ? '+ Calendario' : '+ Calendar'}
+                    </button>
+                  )}
                 </div>
                 <div className={isDone ? 'ctrl-pop' : ''} style={{
                   width: 24, height: 24, borderRadius: '50%', flexShrink: 0,

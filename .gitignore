@@ -145,3 +145,4 @@ vite.config.ts.timestamp-*
 # Vite + PWA build output
 dev-dist/
 .vite/
+.claude/worktrees/

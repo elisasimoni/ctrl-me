@@ -45,8 +45,8 @@ export default function App() {
         : <B_Onboarding onDone={finishOnboarding} />;
     }
     return dir === 'A'
-      ? <A_Home store={store} onCompose={() => setComposeOpen(true)} onSettings={() => setSettingsOpen(true)} />
-      : <B_Home store={store} onCompose={() => setComposeOpen(true)} onSettings={() => setSettingsOpen(true)} />;
+      ? <A_Home store={store} onCompose={() => setComposeOpen(true)} onSettings={() => setSettingsOpen(true)} onAddReminder={addReminder} />
+      : <B_Home store={store} onCompose={() => setComposeOpen(true)} onSettings={() => setSettingsOpen(true)} onAddReminder={addReminder} />;
   };
 
   const Notification = dir === 'A' ? A_Notification : B_Notification;
