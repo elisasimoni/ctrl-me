@@ -32,40 +32,55 @@ export function A_Onboarding({ onDone }) {
   const next = () => step < steps.length - 1 ? setStep(step + 1) : onDone?.();
 
   return (
-    <div className="cm-screen" style={{ background: BG, color: INK, overflow: 'hidden' }}>
+    <div className="cm-screen" style={{
+      background: BG, color: INK, overflow: 'hidden',
+      display: 'flex', flexDirection: 'column',
+    }}>
       <ADotGrid />
-      <div style={{ position: 'absolute', top: 70, left: 24, right: 24, display: 'flex', justifyContent: 'space-between' }}>
+
+      {/* Header */}
+      <div style={{ flexShrink: 0, padding: '70px 24px 0', display: 'flex', justifyContent: 'space-between', position: 'relative', zIndex: 1 }}>
         <APill>{s.tag}</APill>
         <span className="mono" style={{ fontSize: 10.5, color: DIM, letterSpacing: '0.1em' }}>
           {String(step + 1).padStart(2,'0')} / {String(steps.length).padStart(2,'0')}
         </span>
       </div>
 
-      <div style={{ position: 'absolute', top: 130, left: 24, right: 24 }}>
-        <div className="mono" style={{ fontSize: 13, color: DIM, letterSpacing: '0.2em', marginBottom: 14 }}>
-          ┌─ CTRL+ME ──────────────┐
+      {/* Scrollable content */}
+      <div style={{ flex: 1, minHeight: 0, overflow: 'hidden', position: 'relative' }}>
+        <div style={{ height: '100%', overflowY: 'auto', padding: '24px 24px 120px' }}>
+          <div className="mono" style={{ fontSize: 13, color: DIM, letterSpacing: '0.2em', marginBottom: 14 }}>
+            ┌─ CTRL+ME ──────────────┐
+          </div>
+          <div className="tight ctrl-fadein" key={step} style={{
+            fontSize: 36, fontWeight: 600, lineHeight: 1.04, letterSpacing: '-0.035em', color: INK,
+          }}>
+            {headlineEl(step)}
+            <span className="ctrl-blink" style={{
+              display: 'inline-block', width: 14, height: 28, background: INK,
+              marginLeft: 6, verticalAlign: '-4px',
+            }} />
+          </div>
+          <div className="mono" style={{ marginTop: 18, fontSize: 13, lineHeight: 1.55, color: DIM, maxWidth: 320 }}>
+            {s.sub}
+          </div>
+
+          <div style={{ marginTop: 36, display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {step >= 0 && <APreview delay={0}   icon="rain"   tag={t('a.tag.weather')} text={t('a.preview.weather')} />}
+            {step >= 1 && <APreview delay={150} icon="wallet" tag={t('a.tag.budget')}  text={t('a.preview.budget')} />}
+            {step >= 2 && <APreview delay={300} icon="pin"    tag={t('a.tag.exam')}    text={t('a.preview.exam')} />}
+          </div>
         </div>
-        <div className="tight ctrl-fadein" key={step} style={{
-          fontSize: 36, fontWeight: 600, lineHeight: 1.04, letterSpacing: '-0.035em', color: INK,
-        }}>
-          {headlineEl(step)}
-          <span className="ctrl-blink" style={{
-            display: 'inline-block', width: 14, height: 28, background: INK,
-            marginLeft: 6, verticalAlign: '-4px',
-          }} />
-        </div>
-        <div className="mono" style={{ marginTop: 18, fontSize: 13, lineHeight: 1.55, color: DIM, maxWidth: 320 }}>
-          {s.sub}
-        </div>
+        {/* gradient fade above CTA */}
+        <div style={{
+          position: 'absolute', left: 0, right: 0, bottom: 0, height: 48,
+          background: `linear-gradient(180deg, rgba(10,10,10,0) 0%, ${BG} 100%)`,
+          pointerEvents: 'none',
+        }} />
       </div>
 
-      <div style={{ position: 'absolute', top: 410, left: 24, right: 24, display: 'flex', flexDirection: 'column', gap: 8 }}>
-        {step >= 0 && <APreview delay={0}   icon="rain"   tag={t('a.tag.weather')} text={t('a.preview.weather')} />}
-        {step >= 1 && <APreview delay={150} icon="wallet" tag={t('a.tag.budget')}  text={t('a.preview.budget')} />}
-        {step >= 2 && <APreview delay={300} icon="pin"    tag={t('a.tag.exam')}    text={t('a.preview.exam')} />}
-      </div>
-
-      <div style={{ position: 'absolute', left: 24, right: 24, bottom: 64 }}>
+      {/* CTA */}
+      <div style={{ flexShrink: 0, padding: '0 24px 64px' }}>
         <button onClick={next} style={{
           width: '100%', height: 56, borderRadius: 14, border: 'none',
           background: INK, color: BG, cursor: 'pointer',
