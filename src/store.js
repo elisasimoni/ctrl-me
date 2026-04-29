@@ -22,6 +22,7 @@ function buildSeed(t) {
 const DEFAULT_PREFS = {
   direction: 'B', // 'A' | 'B'
   onboarded: false,
+  themeChosen: false,
   personality: 'buddy', // 'chill' | 'buddy' | 'hype'
 };
 

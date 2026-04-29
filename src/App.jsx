@@ -5,6 +5,7 @@ import { A_Onboarding, A_Home, A_Notification } from './screens/DirA.jsx';
 import { B_Onboarding, B_Home, B_Notification } from './screens/DirB.jsx';
 import { AddSheet } from './components/AddSheet.jsx';
 import { Settings } from './components/Settings.jsx';
+import { ThemeChooser } from './components/ThemeChooser.jsx';
 import { useT } from './i18n.jsx';
 
 export default function App() {
@@ -13,7 +14,11 @@ export default function App() {
   const { state, addReminder, setPref } = store;
   const standalone = useIsStandalone();
 
-  const [view, setView] = useState(() => state.prefs.onboarded ? 'home' : 'onboarding');
+  const [view, setView] = useState(() => {
+    if (state.prefs.onboarded) return 'home';
+    if (!state.prefs.themeChosen) return 'theme';
+    return 'onboarding';
+  });
   const [composeOpen, setComposeOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [nudgeOpen, setNudgeOpen] = useState(false);
@@ -38,7 +43,16 @@ export default function App() {
     setView('home');
   };
 
+  const pickTheme = (chosenDir) => {
+    setPref('direction', chosenDir);
+    setPref('themeChosen', true);
+    setView('onboarding');
+  };
+
   const renderScreen = () => {
+    if (view === 'theme') {
+      return <ThemeChooser onPick={pickTheme} />;
+    }
     if (view === 'onboarding') {
       return dir === 'A'
         ? <A_Onboarding onDone={finishOnboarding} />

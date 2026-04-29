@@ -52,11 +52,18 @@ export function B_Onboarding({ onDone }) {
   const s = slides[step];
   const next = () => step < slides.length - 1 ? setStep(step + 1) : onDone?.();
 
+  const stripText = (text, italic) => italic && text.includes(italic) ? text.replace(italic, '') : text;
+  const antiItems = [t('b.tag.streaks'), t('b.tag.7am'), t('b.tag.guilt')].map(s => s.replace(/^[·\s]+/, ''));
+
   return (
-    <div className="cm-screen" style={{ background: PAPER, color: INK, overflow: 'hidden' }}>
+    <div className="cm-screen" style={{
+      background: PAPER, color: INK, overflow: 'hidden',
+      display: 'flex', flexDirection: 'column',
+    }}>
       <PaperGrain />
 
-      <div style={{ position: 'absolute', top: 70, left: 28, right: 28, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      {/* Header */}
+      <div style={{ flexShrink: 0, padding: '70px 28px 0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <span className="tight" style={{ fontSize: 12, fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase', color: DIM }}>
           {s.eyebrow}
         </span>
@@ -66,52 +73,77 @@ export function B_Onboarding({ onDone }) {
         }}>{t('b.skip')}</button>
       </div>
 
-      <div className="ctrl-pulse" style={{
-        position: 'absolute', top: 124, left: 0, right: 0, display: 'flex', justifyContent: 'center',
-      }}>
-        <Pebble size={84} />
-      </div>
-
-      <div className="ctrl-fadein" key={step} style={{ position: 'absolute', top: 240, left: 28, right: 28 }}>
-        <div className="tight" style={{
-          fontSize: 46, fontWeight: 700, lineHeight: 0.98, letterSpacing: '-0.045em', color: INK,
-        }}>{richHeadline(s.headline, s.italic)}</div>
-        <div className="tight" style={{
-          marginTop: 22, fontSize: 16, fontWeight: 400, lineHeight: 1.42, color: INK_SOFT,
-          maxWidth: 320, letterSpacing: '-0.01em',
-        }}>{s.sub}</div>
-      </div>
-
-      {step === 1 && (
-        <div style={{ position: 'absolute', top: 510, left: 28, right: 28, display: 'flex', flexDirection: 'column', gap: 10 }}>
-          <BubbleR text={t('b.bubble.user')} />
-          <BubbleL text={t('b.bubble.bot')} delay={400} />
-        </div>
-      )}
-      {step === 0 && (
-        <div style={{ position: 'absolute', top: 520, left: 28, right: 28 }}>
-          <div style={{
-            border: `1.5px dashed ${HAIR}`, borderRadius: 18, padding: '16px 18px',
-            background: 'rgba(255,255,255,0.4)',
-          }}>
-            <div className="tight" style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: DIM, marginBottom: 6 }}>
-              {t('b.things.label')}
-            </div>
-            <div className="tight" style={{ fontSize: 14, lineHeight: 1.55, color: INK_SOFT }}>
-              {t('b.things.list')}
-            </div>
+      {/* Scrollable content */}
+      <div style={{ flex: 1, minHeight: 0, overflow: 'hidden', position: 'relative' }}>
+        <div style={{ height: '100%', overflowY: 'auto', padding: '20px 28px 120px' }}>
+          <div className="ctrl-pulse" style={{ display: 'flex', justifyContent: 'center', marginTop: 8 }}>
+            <Pebble size={84} />
           </div>
-        </div>
-      )}
-      {step === 2 && (
-        <div style={{ position: 'absolute', top: 520, left: 28, right: 28, display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-          <Tag>{t('b.tag.streaks')}</Tag>
-          <Tag>{t('b.tag.7am')}</Tag>
-          <Tag>{t('b.tag.guilt')}</Tag>
-        </div>
-      )}
 
-      <div style={{ position: 'absolute', left: 28, right: 28, bottom: 64 }}>
+          <div className="ctrl-fadein" key={step} style={{ marginTop: 36 }}>
+            <div className="tight" style={{
+              fontSize: 46, fontWeight: 700, lineHeight: 0.98, letterSpacing: '-0.045em', color: INK,
+            }}>{richHeadline(s.headline, s.italic)}</div>
+            <div className="tight" style={{
+              marginTop: 22, fontSize: 16, fontWeight: 400, lineHeight: 1.42, color: INK_SOFT,
+              maxWidth: 320, letterSpacing: '-0.01em',
+            }}>{s.sub}</div>
+          </div>
+
+          {step === 0 && (
+            <div style={{ marginTop: 28 }}>
+              <div style={{
+                border: `1.5px dashed ${HAIR}`, borderRadius: 18, padding: '16px 18px',
+                background: 'rgba(255,255,255,0.4)',
+              }}>
+                <div className="tight" style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: DIM, marginBottom: 6 }}>
+                  {t('b.things.label')}
+                </div>
+                <div className="tight" style={{ fontSize: 14, lineHeight: 1.55, color: INK_SOFT }}>
+                  {t('b.things.list')}
+                </div>
+              </div>
+            </div>
+          )}
+          {step === 1 && (
+            <div style={{ marginTop: 28, display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <BubbleR text={t('b.bubble.user')} />
+              <BubbleL text={t('b.bubble.bot')} delay={400} />
+            </div>
+          )}
+          {step === 2 && (
+            <div style={{ marginTop: 28, display: 'flex', flexDirection: 'column' }}>
+              {antiItems.map((label, i) => (
+                <div key={i} style={{
+                  display: 'flex', alignItems: 'center', gap: 14,
+                  padding: '14px 2px',
+                  borderTop: i === 0 ? 'none' : `1px solid ${HAIR}`,
+                }}>
+                  <div style={{
+                    width: 22, height: 22, borderRadius: '50%', flexShrink: 0,
+                    background: INK,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  }}>
+                    <Icon name="check" size={13} stroke={PAPER} sw={2.5} />
+                  </div>
+                  <span className="tight" style={{
+                    fontSize: 16, fontWeight: 500, color: INK_SOFT, letterSpacing: '-0.01em',
+                  }}>{label}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+        {/* gradient fade above CTA */}
+        <div style={{
+          position: 'absolute', left: 0, right: 0, bottom: 0, height: 48,
+          background: `linear-gradient(180deg, rgba(244,241,236,0) 0%, ${PAPER} 100%)`,
+          pointerEvents: 'none',
+        }} />
+      </div>
+
+      {/* CTA */}
+      <div style={{ flexShrink: 0, padding: '0 28px 64px' }}>
         <button onClick={next} className="tight" style={{
           width: '100%', height: 60, borderRadius: 100, border: 'none',
           background: INK, color: PAPER, cursor: 'pointer',
@@ -157,15 +189,6 @@ function BubbleL({ text, delay = 0 }) {
     </div>
   );
 }
-function Tag({ children }) {
-  return (
-    <span className="tight" style={{
-      padding: '8px 14px', borderRadius: 999, background: PAPER_DEEP,
-      fontSize: 13, fontWeight: 500, color: INK_SOFT, letterSpacing: '-0.01em',
-    }}>{children}</span>
-  );
-}
-
 // ─── Home ──────────────────────────────────────────────────
 export function B_Home({ store, onCompose, onSettings, onAddReminder }) {
   const { t, lang } = useT();
