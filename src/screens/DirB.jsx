@@ -193,7 +193,7 @@ function BubbleL({ text, delay = 0 }) {
   );
 }
 // ─── Home ──────────────────────────────────────────────────
-export function B_Home({ store, onCompose, onSettings, onAddReminder }) {
+export function B_Home({ store, onCompose, onSettings, onProfile, onAddReminder }) {
   const { t, lang } = useT();
   const { state, toggleDone, snooze } = store;
   const items = state.reminders;
@@ -231,7 +231,12 @@ export function B_Home({ store, onCompose, onSettings, onAddReminder }) {
 
       <div style={{ position: 'absolute', top: 64, left: 24, right: 24 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
-          <Pebble size={36} />
+          <button onClick={onProfile} aria-label="profile" style={{
+            background: 'transparent', border: 'none', padding: 0, cursor: 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>
+            <Pebble size={36} />
+          </button>
           <div style={{ flex: 1 }}>
             <div className="tight" style={{ fontSize: 12, fontWeight: 600, color: DIM, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
               {formatDate(lang, new Date(), { weekday: 'long', month: 'long', day: 'numeric' })}

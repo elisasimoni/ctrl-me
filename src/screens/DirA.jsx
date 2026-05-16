@@ -127,7 +127,7 @@ function APreview({ icon, tag, text, delay = 0 }) {
 }
 
 // ─── Home ─────────────────────────────────────────────────────
-export function A_Home({ store, onCompose, onSettings }) {
+export function A_Home({ store, onCompose, onSettings, onProfile }) {
   const { t, lang } = useT();
   const { state, toggleDone, snooze } = store;
   const items = state.reminders;
@@ -171,7 +171,11 @@ export function A_Home({ store, onCompose, onSettings }) {
 
       <div style={{ position: 'absolute', top: 64, left: 22, right: 22 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
-          <APill>{t('a.online')}</APill>
+          <button onClick={onProfile} aria-label="profile" style={{
+            background: 'transparent', border: 'none', padding: 0, cursor: 'pointer',
+          }}>
+            <APill>{t('a.online')}</APill>
+          </button>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
             <span className="mono" style={{ fontSize: 11, color: DIM, letterSpacing: '0.1em' }}>
               {formatDate(lang, time, { weekday: 'short', month: 'short', day: 'numeric' }).toUpperCase()}

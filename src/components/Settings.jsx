@@ -14,11 +14,13 @@ import { behaviorStats } from '../lib/behavior.js';
 const DAYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
 const AREAS = ['study', 'health', 'social', 'work', 'home', 'habits'];
 
-export function Settings({ open, onClose, store }) {
+export function Settings({ open, mode = 'profile', onClose, store }) {
   const { t, lang, setLang } = useT();
   const [, forceRender] = useState(0);
   const [graphOpen, setGraphOpen] = useState(false);
   if (!open) return null;
+  const isProfile = mode === 'profile';
+  const isConfig  = mode === 'config';
   const { state, setPref, setProfile, reset, resetOnboarding, clearReminders, clearBehaviorLog } = store;
   const clusterCount = listClusters(state.reminders).length;
   const stats = behaviorStats(state.behaviorLog);
@@ -66,11 +68,15 @@ export function Settings({ open, onClose, store }) {
           }}>×</button>
         </div>
 
-        {/* Hero: Pebble + greeting */}
-        <Hero tok={tok} name={profile.name} t={t} />
+        {/* Hero: differs by mode */}
+        {isProfile ? (
+          <Hero tok={tok} name={profile.name} t={t} />
+        ) : (
+          <ConfigHero tok={tok} t={t} />
+        )}
 
-        {/* Constellation graph entry — only when there are clusters */}
-        {clusterCount > 0 && (
+        {/* Constellation graph entry — profile only, when clusters exist */}
+        {isProfile && clusterCount > 0 && (
           <button onClick={() => setGraphOpen(true)} style={{
             display: 'flex', alignItems: 'center', justifyContent: 'space-between',
             width: '100%', marginBottom: 24,
@@ -86,14 +92,17 @@ export function Settings({ open, onClose, store }) {
         )}
 
         {/* Profile */}
+        {isProfile && (
         <Section tok={tok} label={t('settings.section.profile')}>
           <FieldLabel tok={tok} text={t('settings.name')} />
           <TextInput tok={tok} value={profile.name}
             placeholder={t('q.1.placeholder')}
             onChange={v => setProfile({ name: v })} />
         </Section>
+        )}
 
-        {/* Appearance */}
+        {/* Appearance — config */}
+        {isConfig && (
         <Section tok={tok} label={t('settings.section.appearance')}>
           <FieldLabel tok={tok} text={t('settings.theme')} />
           <SegToggle tok={tok}
@@ -115,8 +124,10 @@ export function Settings({ open, onClose, store }) {
             onChange={setLang}
           />
         </Section>
+        )}
 
-        {/* Behavior */}
+        {/* Behavior (tone) — profile */}
+        {isProfile && (
         <Section tok={tok} label={t('settings.section.behavior')}>
           <FieldLabel tok={tok} text={t('settings.personality')} />
           <SegToggle tok={tok}
@@ -167,8 +178,10 @@ export function Settings({ open, onClose, store }) {
             onToggle={(k) => setProfile({ [k]: !profile[k] })}
           />
         </Section>
+        )}
 
-        {/* Schedule */}
+        {/* Schedule — profile */}
+        {isProfile && (
         <Section tok={tok} label={t('settings.section.schedule')}>
           <div style={{ display: 'flex', gap: 16 }}>
             <HourPicker tok={tok} label={t('settings.wake')} value={profile.wakeHour}
@@ -183,16 +196,20 @@ export function Settings({ open, onClose, store }) {
             options={DAYS.map(d => ({ v: d, label: t(`q.6.${d}`) }))}
           />
         </Section>
+        )}
 
-        {/* Focus */}
+        {/* Focus — profile */}
+        {isProfile && (
         <Section tok={tok} label={t('settings.section.focus')}>
           <MultiChoice tok={tok} values={profile.areas}
             onToggle={v => setProfile({ areas: toggleInArray(profile.areas, v) })}
             options={AREAS.map(a => ({ v: a, label: t(`q.7.${a}`) }))}
           />
         </Section>
+        )}
 
-        {/* Ambient */}
+        {/* Ambient — config */}
+        {isConfig && (
         <Section tok={tok} label={t('settings.section.ambient')}>
           <Toggles tok={tok}
             items={[
@@ -203,9 +220,10 @@ export function Settings({ open, onClose, store }) {
             onToggle={(k) => setProfile({ [k]: !profile[k] })}
           />
         </Section>
+        )}
 
-        {/* Memory (LLM facts) */}
-        {isLlmEnabled() && (
+        {/* Memory (LLM facts) — profile */}
+        {isProfile && isLlmEnabled() && (
           <Section tok={tok} label={t('settings.section.memory')}>
             {hasFacts ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -244,7 +262,8 @@ export function Settings({ open, onClose, store }) {
           theme={dir}
         />
 
-        {/* Behavior — what the app has noticed */}
+        {/* Behavior — profile */}
+        {isProfile && (
         <Section tok={tok} label={t('settings.section.behaviorLog')}>
           <BehaviorPanel tok={tok} t={t} lang={lang} stats={stats}
             onClear={() => {
@@ -252,8 +271,10 @@ export function Settings({ open, onClose, store }) {
             }}
           />
         </Section>
+        )}
 
-        {/* Danger zone */}
+        {/* Danger zone — config */}
+        {isConfig && (
         <Section tok={tok} label={t('settings.section.danger')}>
           <DangerLink tok={tok} onClick={handleRedo} label={t('settings.redoOnboarding')} />
           <DangerLink tok={tok} onClick={() => { if (confirmReminders(lang)) clearReminders(); }}
@@ -261,6 +282,7 @@ export function Settings({ open, onClose, store }) {
           <DangerLink tok={tok} onClick={() => { if (confirmWipe(lang)) handleWipe(); }}
             label={t('settings.wipeAll')} danger />
         </Section>
+        )}
       </div>
     </div>
   );
@@ -278,6 +300,20 @@ function confirmWipe(lang) {
 }
 
 // ─── building blocks ────────────────────────────────────────
+
+function ConfigHero({ tok, t }) {
+  return (
+    <div style={{ marginBottom: 24 }}>
+      <h1 style={{
+        margin: 0, fontFamily: tok.fontTitle, fontSize: 24, fontWeight: 700,
+        letterSpacing: tok.titleLetter, lineHeight: 1.1,
+      }}>{t('settings.config.title')}</h1>
+      <p style={{
+        margin: '4px 0 0', fontSize: 13, color: tok.dim, lineHeight: 1.4,
+      }}>{t('settings.config.subtitle')}</p>
+    </div>
+  );
+}
 
 function Hero({ tok, name, t }) {
   return (

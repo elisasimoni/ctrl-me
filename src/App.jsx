@@ -31,7 +31,7 @@ export default function App() {
     }
   }, [state.prefs.onboarded, state.prefs.themeChosen, state.prefs.profileDone]);
   const [composeOpen, setComposeOpen] = useState(false);
-  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [panel, setPanel] = useState(null); // null | 'profile' | 'config'
   const [nudgeOpen, setNudgeOpen] = useState(false);
 
   const dir = state.prefs.direction;
@@ -88,8 +88,16 @@ export default function App() {
         : <B_Onboarding onDone={finishOnboarding} />;
     }
     return dir === 'A'
-      ? <A_Home store={store} onCompose={() => setComposeOpen(true)} onSettings={() => setSettingsOpen(true)} onAddReminder={addReminder} />
-      : <B_Home store={store} onCompose={() => setComposeOpen(true)} onSettings={() => setSettingsOpen(true)} onAddReminder={addReminder} />;
+      ? <A_Home store={store}
+          onCompose={() => setComposeOpen(true)}
+          onSettings={() => setPanel('config')}
+          onProfile={() => setPanel('profile')}
+          onAddReminder={addReminder} />
+      : <B_Home store={store}
+          onCompose={() => setComposeOpen(true)}
+          onSettings={() => setPanel('config')}
+          onProfile={() => setPanel('profile')}
+          onAddReminder={addReminder} />;
   };
 
   const Notification = dir === 'A' ? A_Notification : B_Notification;
@@ -112,7 +120,7 @@ export default function App() {
         behavior={behaviorSummary(state.behaviorLog)}
         theme={dir}
       />
-      <Settings open={settingsOpen} onClose={() => setSettingsOpen(false)} store={store} />
+      <Settings open={panel !== null} mode={panel ?? 'profile'} onClose={() => setPanel(null)} store={store} />
     </>
   );
 
