@@ -9,6 +9,7 @@ import {
 } from './ProfileInputs.jsx';
 import { ConstellationGraph } from './ConstellationGraph.jsx';
 import { listClusters } from '../lib/clusters.js';
+import { behaviorStats } from '../lib/behavior.js';
 
 const DAYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
 const AREAS = ['study', 'health', 'social', 'work', 'home', 'habits'];
@@ -18,8 +19,9 @@ export function Settings({ open, onClose, store }) {
   const [, forceRender] = useState(0);
   const [graphOpen, setGraphOpen] = useState(false);
   if (!open) return null;
-  const { state, setPref, setProfile, reset, resetOnboarding, clearReminders } = store;
+  const { state, setPref, setProfile, reset, resetOnboarding, clearReminders, clearBehaviorLog } = store;
   const clusterCount = listClusters(state.reminders).length;
+  const stats = behaviorStats(state.behaviorLog);
   const dir = state.prefs.direction;
   const tok = TOKENS[dir];
   const isDark = dir === 'A';
@@ -242,6 +244,15 @@ export function Settings({ open, onClose, store }) {
           theme={dir}
         />
 
+        {/* Behavior — what the app has noticed */}
+        <Section tok={tok} label={t('settings.section.behaviorLog')}>
+          <BehaviorPanel tok={tok} t={t} lang={lang} stats={stats}
+            onClear={() => {
+              if (window.confirm(t('settings.behavior.forget.confirm'))) clearBehaviorLog();
+            }}
+          />
+        </Section>
+
         {/* Danger zone */}
         <Section tok={tok} label={t('settings.section.danger')}>
           <DangerLink tok={tok} onClick={handleRedo} label={t('settings.redoOnboarding')} />
@@ -331,6 +342,76 @@ function SegToggle({ tok, options, value, onChange }) {
           transition: 'all .2s',
         }}>{o.label}</button>
       ))}
+    </div>
+  );
+}
+
+function BehaviorPanel({ tok, t, lang, stats, onClear }) {
+  if (!stats.hasAnything) {
+    return (
+      <div style={{ fontSize: 13, color: tok.dim, lineHeight: 1.5 }}>
+        {t('settings.behavior.empty')}
+      </div>
+    );
+  }
+  const whenLabel = stats.peakWhen ? t(`when.${stats.peakWhen}`) : null;
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+      {stats.completionRate != null && stats.completionRate < 0.4 && (
+        <div style={{ fontSize: 13, color: tok.ink, lineHeight: 1.45 }}>
+          · {t('settings.behavior.completionLow')}
+        </div>
+      )}
+      {stats.completionRate != null && stats.completionRate > 0.8 && (
+        <div style={{ fontSize: 13, color: tok.ink, lineHeight: 1.45 }}>
+          · {t('settings.behavior.completionHigh')}
+        </div>
+      )}
+      {whenLabel && (
+        <div style={{ fontSize: 13, color: tok.ink, lineHeight: 1.45 }}>
+          · {t('settings.behavior.peak', { when: whenLabel })}
+        </div>
+      )}
+
+      {stats.skipped.length > 0 && (
+        <div>
+          <div style={{
+            fontFamily: "'JetBrains Mono', monospace",
+            fontSize: 10, color: tok.dim,
+            letterSpacing: '0.16em', textTransform: 'uppercase',
+            marginBottom: 8,
+          }}>{t('settings.behavior.skipped')}</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {stats.skipped.map((s, i) => (
+              <div key={i} style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                padding: '8px 12px', borderRadius: 10,
+                background: tok === TOKENS.A ? 'rgba(245,245,242,0.05)' : 'rgba(0,0,0,0.04)',
+              }}>
+                <span style={{
+                  flex: 1, fontSize: 13,
+                  color: tok.ink, lineHeight: 1.3,
+                  overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                  marginRight: 8,
+                }}>{s.title}</span>
+                <span style={{
+                  fontFamily: "'JetBrains Mono', monospace",
+                  fontSize: 11, color: tok.dim, letterSpacing: '0.06em',
+                  flexShrink: 0,
+                }}>{s.count}{t('behavior.times')}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <button onClick={onClear} style={{
+        alignSelf: 'flex-start',
+        padding: '8px 14px', borderRadius: 100,
+        background: 'transparent', border: `1.5px solid ${tok.hair}`,
+        color: tok.dim, fontFamily: tok.fontBody, fontSize: 12, fontWeight: 600,
+        cursor: 'pointer', letterSpacing: '-0.005em',
+      }}>{t('settings.behavior.forget')}</button>
     </div>
   );
 }

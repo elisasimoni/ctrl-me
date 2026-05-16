@@ -216,10 +216,11 @@ export function B_Home({ store, onCompose, onSettings, onAddReminder }) {
   const thingsSuffix = total === 1 ? '' : 's';
   const itPlural = total === 1 ? 'a' : 'e';
   const remaining = total - doneCount;
-  const skippedTitles = useMemo(
-    () => new Set(frequentlySkipped(state.behaviorLog).map(s => s.title)),
-    [state.behaviorLog]
-  );
+  const skippedCounts = useMemo(() => {
+    const m = new Map();
+    frequentlySkipped(state.behaviorLog).forEach(s => m.set(s.title, s.count));
+    return m;
+  }, [state.behaviorLog]);
   const remainingSuffix = remaining === 1 ? '' : 's';
   const itRemainingPlural = remaining === 1 ? 'a' : 'e';
 
@@ -332,11 +333,11 @@ export function B_Home({ store, onCompose, onSettings, onAddReminder }) {
                   <div className="tight" style={{
                     fontSize: 13, color: isDone ? DIM : INK_SOFT, lineHeight: 1.4, letterSpacing: '-0.005em',
                   }}>{item.body}</div>
-                  {!isDone && skippedTitles.has(item.title) && (
+                  {!isDone && skippedCounts.has(item.title) && (
                     <div className="mono" style={{
                       marginTop: 6, fontSize: 10, color: DIM,
                       letterSpacing: '0.12em', textTransform: 'uppercase',
-                    }}>↺ {t('behavior.oftenSkipped')}</div>
+                    }}>↺ {skippedCounts.get(item.title)}{t('behavior.times')}</div>
                   )}
                   {!isDone && (item.icon === 'pin' || item.location) && (
                     <button

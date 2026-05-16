@@ -158,6 +158,16 @@ const dict = {
 
     // behavior signals
     'behavior.oftenSkipped': 'often skipped',
+    'behavior.times': '× this week',
+
+    'settings.section.behaviorLog': 'What I notice',
+    'settings.behavior.empty': 'Nothing notable yet. Add and skip a few reminders — patterns appear in the second week.',
+    'settings.behavior.skipped': 'Often skipped',
+    'settings.behavior.completionLow': 'You\'ve closed under 40% of reminders this week.',
+    'settings.behavior.completionHigh': 'You\'ve closed over 80% of reminders this week. Quiet flex.',
+    'settings.behavior.peak': 'Most reliable in the {when}.',
+    'settings.behavior.forget': 'Forget my patterns',
+    'settings.behavior.forget.confirm': 'Wipe everything I\'ve noticed about how you use me?',
 
     // add sheet
     'add.title.a': '$ remind me to',
@@ -414,6 +424,16 @@ const dict = {
     'graph.openButton': 'Vedi costellazioni',
 
     'behavior.oftenSkipped': 'spesso saltato',
+    'behavior.times': '× questa settimana',
+
+    'settings.section.behaviorLog': 'Cosa noto di te',
+    'settings.behavior.empty': 'Ancora niente di rilevante. Crea e skippa qualche reminder — i pattern emergono dalla seconda settimana.',
+    'settings.behavior.skipped': 'Spesso saltati',
+    'settings.behavior.completionLow': 'Hai chiuso meno del 40% dei reminder questa settimana.',
+    'settings.behavior.completionHigh': 'Hai chiuso più dell\'80% dei reminder questa settimana. Bel flex silenzioso.',
+    'settings.behavior.peak': 'Più affidabile {when}.',
+    'settings.behavior.forget': 'Dimentica i pattern',
+    'settings.behavior.forget.confirm': 'Cancello tutto quello che ho notato su come mi usi?',
 
     'add.title.a': '$ ricordami di',
     'add.title.b': 'Cosa non vuoi scordare',

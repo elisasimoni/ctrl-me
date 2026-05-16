@@ -29,6 +29,24 @@ export function frequentlySkipped(log, { windowMs = WEEK, threshold = 3 } = {}) 
     .sort((a, b) => b.count - a.count);
 }
 
+// Structured stats consumed by Settings to render localized strings.
+// Same window as behaviorSummary so the UI matches what the LLM sees.
+export function behaviorStats(log, { windowMs = WEEK } = {}) {
+  const recent = recentEvents(log ?? [], windowMs);
+  const skipped = frequentlySkipped(log ?? [], { windowMs }).slice(0, 5);
+  const done = recent.filter(e => e.type === 'done').length;
+  const snoozed = recent.filter(e => e.type === 'snooze').length;
+  const total = done + snoozed;
+  const completionRate = total >= 5 ? done / total : null;
+  const doneByWhen = { morning: 0, noon: 0, afternoon: 0, evening: 0, later: 0 };
+  recent.filter(e => e.type === 'done').forEach(e => {
+    if (e.when in doneByWhen) doneByWhen[e.when] += 1;
+  });
+  const peakEntry = Object.entries(doneByWhen).sort((a, b) => b[1] - a[1])[0];
+  const peakWhen = peakEntry && peakEntry[1] >= 3 ? peakEntry[0] : null;
+  return { skipped, completionRate, peakWhen, hasAnything: skipped.length > 0 || completionRate != null || peakWhen };
+}
+
 // Top 1–2 short observations to feed into the LLM memory block.
 // Always returns a string (possibly empty).
 export function behaviorSummary(log) {

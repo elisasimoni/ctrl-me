@@ -154,10 +154,11 @@ export function A_Home({ store, onCompose, onSettings }) {
   const doneCount = items.filter(i => i.done).length;
   const total = items.length;
   const pct = total === 0 ? 0 : Math.round((doneCount / total) * 100);
-  const skippedTitles = useMemo(
-    () => new Set(frequentlySkipped(state.behaviorLog).map(s => s.title)),
-    [state.behaviorLog]
-  );
+  const skippedCounts = useMemo(() => {
+    const m = new Map();
+    frequentlySkipped(state.behaviorLog).forEach(s => m.set(s.title, s.count));
+    return m;
+  }, [state.behaviorLog]);
 
   // EN uses {s}; IT uses {a}.
   const thingsSuffix = total === 1 ? '' : 's';
@@ -271,11 +272,11 @@ export function A_Home({ store, onCompose, onSettings }) {
                   <div className="mono" style={{ fontSize: 11.5, color: isDone ? DONE : DIM, marginTop: 4, lineHeight: 1.45 }}>
                     {item.body}
                   </div>
-                  {!isDone && skippedTitles.has(item.title) && (
+                  {!isDone && skippedCounts.has(item.title) && (
                     <div className="mono" style={{
                       marginTop: 5, fontSize: 9.5, color: DIM,
                       letterSpacing: '0.16em', textTransform: 'uppercase',
-                    }}>↺ {t('behavior.oftenSkipped')}</div>
+                    }}>↺ {skippedCounts.get(item.title)}{t('behavior.times')}</div>
                   )}
                 </div>
                 <div className={isDone ? 'ctrl-pop' : ''} style={{
