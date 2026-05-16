@@ -53,6 +53,8 @@ function mergePrefs(saved) {
   return base;
 }
 
+const BEHAVIOR_CAP = 200;
+
 function load() {
   try {
     const raw = localStorage.getItem(KEY);
@@ -61,10 +63,15 @@ function load() {
     return {
       reminders: parsed.reminders ?? [],
       prefs: mergePrefs(parsed.prefs),
+      behaviorLog: parsed.behaviorLog ?? [],
     };
   } catch {
     return null;
   }
+}
+
+function appendEvent(log, entry) {
+  return [...log, entry].slice(-BEHAVIOR_CAP);
 }
 
 export function useStore(/* t, lang kept for signature compat */) {
@@ -73,6 +80,7 @@ export function useStore(/* t, lang kept for signature compat */) {
     return {
       reminders: loaded?.reminders ?? [],
       prefs: mergePrefs(loaded?.prefs),
+      behaviorLog: loaded?.behaviorLog ?? [],
     };
   });
 
@@ -81,24 +89,47 @@ export function useStore(/* t, lang kept for signature compat */) {
   }, [state]);
 
   const toggleDone = useCallback((id) => {
-    setState(s => ({
-      ...s,
-      reminders: s.reminders.map(r => r.id === id ? { ...r, done: !r.done } : r),
-    }));
+    setState(s => {
+      const r = s.reminders.find(x => x.id === id);
+      if (!r) return s;
+      const nowDone = !r.done;
+      return {
+        ...s,
+        reminders: s.reminders.map(x => x.id === id ? { ...x, done: nowDone } : x),
+        behaviorLog: appendEvent(s.behaviorLog, {
+          type: nowDone ? 'done' : 'undone',
+          title: r.title, tag: r.tag, icon: r.icon, when: r.when,
+          at: Date.now(),
+        }),
+      };
+    });
   }, []);
 
   const snooze = useCallback((id) => {
-    setState(s => ({ ...s, reminders: s.reminders.filter(r => r.id !== id) }));
+    setState(s => {
+      const r = s.reminders.find(x => x.id === id);
+      const log = r
+        ? appendEvent(s.behaviorLog, {
+            type: 'snooze', title: r.title, tag: r.tag, icon: r.icon, when: r.when,
+            at: Date.now(),
+          })
+        : s.behaviorLog;
+      return { ...s, reminders: s.reminders.filter(x => x.id !== id), behaviorLog: log };
+    });
   }, []);
 
   const addReminder = useCallback((partial) => {
-    setState(s => ({
-      ...s,
-      reminders: [
-        ...s.reminders,
-        buildReminder(partial),
-      ],
-    }));
+    setState(s => {
+      const r = buildReminder(partial);
+      return {
+        ...s,
+        reminders: [...s.reminders, r],
+        behaviorLog: appendEvent(s.behaviorLog, {
+          type: 'created', title: r.title, tag: r.tag, icon: r.icon, when: r.when,
+          at: Date.now(),
+        }),
+      };
+    });
   }, []);
 
   // Atomically add a parent reminder + its children, linked by clusterId.
@@ -111,10 +142,15 @@ export function useStore(/* t, lang kept for signature compat */) {
         clusterId,
         parentId: parentR.id,
         kind: 'child',
-        // give children sequential ids so they're stable
         id: parentR.id + 1 + i,
       }));
-      return { ...s, reminders: [...s.reminders, parentR, ...childR] };
+      const log = appendEvent(s.behaviorLog, {
+        type: 'cluster_created',
+        title: parentR.title, tag: parentR.tag, icon: parentR.icon, when: parentR.when,
+        childrenCount: childR.length,
+        at: Date.now(),
+      });
+      return { ...s, reminders: [...s.reminders, parentR, ...childR], behaviorLog: log };
     });
   }, []);
 
@@ -131,7 +167,7 @@ export function useStore(/* t, lang kept for signature compat */) {
 
   // Full nuke — used by "reset everything" in settings.
   const reset = useCallback(() => {
-    setState({ reminders: [], prefs: mergePrefs(null) });
+    setState({ reminders: [], prefs: mergePrefs(null), behaviorLog: [] });
   }, []);
 
   // Replay onboarding without wiping reminders.
@@ -142,10 +178,15 @@ export function useStore(/* t, lang kept for signature compat */) {
     }));
   }, []);
 
-  // Clear reminders only.
+  // Clear reminders only (keeps behavior log so the LLM keeps patterns).
   const clearReminders = useCallback(() => {
     setState(s => ({ ...s, reminders: [] }));
   }, []);
 
-  return { state, toggleDone, snooze, addReminder, addCluster, setPref, setProfile, reset, resetOnboarding, clearReminders };
+  // Wipe just the behavior log (for the user; settings affordance).
+  const clearBehaviorLog = useCallback(() => {
+    setState(s => ({ ...s, behaviorLog: [] }));
+  }, []);
+
+  return { state, toggleDone, snooze, addReminder, addCluster, setPref, setProfile, reset, resetOnboarding, clearReminders, clearBehaviorLog };
 }

@@ -55,13 +55,14 @@ function profileSummary(profile) {
 }
 
 // Returns a compact string to prepend to the user message.
-// Kept short so it adds ~80-150 tokens max.
-export function memoryBlock(profile) {
+// Kept short so it adds ~80-200 tokens max.
+export function memoryBlock(profile, behavior = '') {
   const { facts } = loadMemory();
   const summary = profileSummary(profile);
   const factsLine = facts.length
     ? `What I know about this user:\n${facts.map(f => `- ${f}`).join('\n')}`
     : '';
-  if (!summary && !factsLine) return '';
-  return [summary, factsLine].filter(Boolean).join('\n') + '\n\n';
+  const lines = [summary, behavior, factsLine].filter(Boolean);
+  if (!lines.length) return '';
+  return lines.join('\n') + '\n\n';
 }

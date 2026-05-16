@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Icon, APill, ADotGrid } from '../atoms.jsx';
 import { useT, formatDate } from '../i18n.jsx';
 import { groupReminders } from '../lib/clusters.js';
+import { frequentlySkipped } from '../lib/behavior.js';
 
 const BG = '#0a0a0a';
 const INK = '#f5f5f2';
@@ -153,6 +154,10 @@ export function A_Home({ store, onCompose, onSettings }) {
   const doneCount = items.filter(i => i.done).length;
   const total = items.length;
   const pct = total === 0 ? 0 : Math.round((doneCount / total) * 100);
+  const skippedTitles = useMemo(
+    () => new Set(frequentlySkipped(state.behaviorLog).map(s => s.title)),
+    [state.behaviorLog]
+  );
 
   // EN uses {s}; IT uses {a}.
   const thingsSuffix = total === 1 ? '' : 's';
@@ -266,6 +271,12 @@ export function A_Home({ store, onCompose, onSettings }) {
                   <div className="mono" style={{ fontSize: 11.5, color: isDone ? DONE : DIM, marginTop: 4, lineHeight: 1.45 }}>
                     {item.body}
                   </div>
+                  {!isDone && skippedTitles.has(item.title) && (
+                    <div className="mono" style={{
+                      marginTop: 5, fontSize: 9.5, color: DIM,
+                      letterSpacing: '0.16em', textTransform: 'uppercase',
+                    }}>↺ {t('behavior.oftenSkipped')}</div>
+                  )}
                 </div>
                 <div className={isDone ? 'ctrl-pop' : ''} style={{
                   width: 22, height: 22, borderRadius: '50%', flexShrink: 0,

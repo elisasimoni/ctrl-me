@@ -156,6 +156,9 @@ const dict = {
     'graph.empty': 'No constellations yet. Add an event and I\'ll propose one.',
     'graph.openButton': 'See constellations',
 
+    // behavior signals
+    'behavior.oftenSkipped': 'often skipped',
+
     // add sheet
     'add.title.a': '$ remind me to',
     'add.title.b': 'New thing to remember',
@@ -409,6 +412,8 @@ const dict = {
     'graph.title': 'Le tue costellazioni',
     'graph.empty': 'Ancora nessuna. Aggiungi un evento e te ne propongo una.',
     'graph.openButton': 'Vedi costellazioni',
+
+    'behavior.oftenSkipped': 'spesso saltato',
 
     'add.title.a': '$ ricordami di',
     'add.title.b': 'Cosa non vuoi scordare',

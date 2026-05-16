@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { Icon, Pebble } from '../atoms.jsx';
 import { useT, formatDate } from '../i18n.jsx';
 import { groupReminders } from '../lib/clusters.js';
+import { frequentlySkipped } from '../lib/behavior.js';
 import { WeatherBanner } from '../components/WeatherBanner.jsx';
 import { openMaps } from '../native/maps.js';
 import { addToCalendar } from '../native/calendar.js';
@@ -215,6 +216,10 @@ export function B_Home({ store, onCompose, onSettings, onAddReminder }) {
   const thingsSuffix = total === 1 ? '' : 's';
   const itPlural = total === 1 ? 'a' : 'e';
   const remaining = total - doneCount;
+  const skippedTitles = useMemo(
+    () => new Set(frequentlySkipped(state.behaviorLog).map(s => s.title)),
+    [state.behaviorLog]
+  );
   const remainingSuffix = remaining === 1 ? '' : 's';
   const itRemainingPlural = remaining === 1 ? 'a' : 'e';
 
@@ -327,6 +332,12 @@ export function B_Home({ store, onCompose, onSettings, onAddReminder }) {
                   <div className="tight" style={{
                     fontSize: 13, color: isDone ? DIM : INK_SOFT, lineHeight: 1.4, letterSpacing: '-0.005em',
                   }}>{item.body}</div>
+                  {!isDone && skippedTitles.has(item.title) && (
+                    <div className="mono" style={{
+                      marginTop: 6, fontSize: 10, color: DIM,
+                      letterSpacing: '0.12em', textTransform: 'uppercase',
+                    }}>↺ {t('behavior.oftenSkipped')}</div>
+                  )}
                   {!isDone && (item.icon === 'pin' || item.location) && (
                     <button
                       onClick={e => { e.stopPropagation(); openMaps(item.location || item.title); }}

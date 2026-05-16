@@ -7,6 +7,7 @@ import { AddSheet } from './components/AddSheet.jsx';
 import { Settings } from './components/Settings.jsx';
 import { ThemeChooser } from './components/ThemeChooser.jsx';
 import { OnboardingQuestionnaire } from './components/OnboardingQuestionnaire.jsx';
+import { behaviorSummary } from './lib/behavior.js';
 import { useT } from './i18n.jsx';
 
 export default function App() {
@@ -108,6 +109,7 @@ export default function App() {
         onAddCluster={addCluster}
         personality={state.prefs.personality}
         profile={state.prefs.profile}
+        behavior={behaviorSummary(state.behaviorLog)}
         theme={dir}
       />
       <Settings open={settingsOpen} onClose={() => setSettingsOpen(false)} store={store} />

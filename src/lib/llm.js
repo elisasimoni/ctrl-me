@@ -34,6 +34,12 @@ CRITICAL RULES — follow exactly:
 3. "time" = parse any time mention ("alle 8", "at 8", "8am", "8:00") → "08:00". Never use current time.
 4. "when" = derive from time: 05-11 → morning, 12 → noon, 13-17 → afternoon, 18-22 → evening, else → later.
 
+BEHAVIOR AWARENESS:
+- The user message may include a "Behavior:" line summarizing recent patterns (frequently dismissed items, completion ratio, peak hours).
+- If the current reminder matches a frequently-dismissed title, body can acknowledge it once — gentle, never guilt-trippy. Example IT: "Ok, ma se la skippi di nuovo magari spostiamola." EN: "Got it — if you bail again, maybe we move it."
+- If the user's "most reliable" window doesn't match the requested time, body can quietly suggest the better window without overriding the user's pick.
+- Don't quote skip counts verbatim. Don't moralize. One sentence max about behavior, and only when clearly relevant.
+
 OUTPUT: JSON only. No prose, no markdown.
 
 FIELDS:
@@ -132,12 +138,12 @@ const SCHEMA = {
   additionalProperties: false,
 };
 
-export async function analyzeReminder({ text, lang, personality, profile }) {
+export async function analyzeReminder({ text, lang, personality, profile, behavior }) {
   const c = client();
   if (!c) throw new Error('LLM not configured');
 
-  // Memory (profile + facts) goes in the USER message so system prompt stays cached
-  const memory = memoryBlock(profile);
+  // Memory (profile + behavior + facts) goes in the USER message so system prompt stays cached
+  const memory = memoryBlock(profile, behavior);
   const userContent = `${memory}Input: ${JSON.stringify({ text, lang, personality })}\n\nOutput as JSON.`;
 
   const response = await c.messages.create({

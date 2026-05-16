@@ -103,7 +103,7 @@ function localBody({ icon, personality, lang }) {
     ?? '';
 }
 
-export function AddSheet({ open, onClose, onAdd, onAddCluster, personality, profile, theme }) {
+export function AddSheet({ open, onClose, onAdd, onAddCluster, personality, profile, behavior, theme }) {
   const { t, lang } = useT();
   const [text, setText] = useState('');
   const [analysis, setAnalysis] = useState(null);
@@ -166,7 +166,7 @@ export function AddSheet({ open, onClose, onAdd, onAddCluster, personality, prof
 
     setLoading(true); setError(null);
     try {
-      const result = await analyzeReminder({ text: trimmed, lang, personality, profile });
+      const result = await analyzeReminder({ text: trimmed, lang, personality, profile, behavior });
       if (result.needs_followup && result.followups.length > 0) {
         setAnalysis(result);
         setLoading(false);
@@ -206,7 +206,7 @@ export function AddSheet({ open, onClose, onAdd, onAddCluster, personality, prof
     }
     setLoading(true);
     try {
-      const result = await analyzeReminder({ text: merged, lang, personality, profile });
+      const result = await analyzeReminder({ text: merged, lang, personality, profile, behavior });
       if (result.cluster?.propose && result.cluster.children?.length >= 2) {
         setLoading(false);
         setClusterPending({
