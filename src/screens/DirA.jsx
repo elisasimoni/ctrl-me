@@ -177,6 +177,11 @@ export function A_Home({ store, onCompose, onSettings }) {
           </div>
         </div>
 
+        {state.prefs.profile.name && (
+          <div className="mono" style={{ fontSize: 11, color: DIM, letterSpacing: '0.04em', marginBottom: 6 }}>
+            {`> hello, ${state.prefs.profile.name.toLowerCase()}.`}
+          </div>
+        )}
         <div className="mono" style={{ fontSize: 11, color: DIM, letterSpacing: '0.18em', marginBottom: 8 }}>
           {t('a.today')}
         </div>

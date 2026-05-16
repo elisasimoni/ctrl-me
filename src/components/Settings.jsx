@@ -2,15 +2,42 @@ import React, { useState } from 'react';
 import { useT } from '../i18n.jsx';
 import { loadMemory, removeFact, clearMemory } from '../native/memory.js';
 import { isLlmEnabled } from '../lib/llm.js';
+import { Pebble } from '../atoms.jsx';
+import {
+  TOKENS, toggleInArray,
+  TextInput, Choice, MultiChoice, MultiPills, HourPicker, Toggles,
+} from './ProfileInputs.jsx';
+
+const DAYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
+const AREAS = ['study', 'health', 'social', 'work', 'home', 'habits'];
 
 export function Settings({ open, onClose, store }) {
   const { t, lang, setLang } = useT();
   const [, forceRender] = useState(0);
   if (!open) return null;
-  const { state, setPref, reset } = store;
-  const isDark = state.prefs.direction === 'A';
+  const { state, setPref, setProfile, reset, resetOnboarding, clearReminders } = store;
+  const dir = state.prefs.direction;
+  const tok = TOKENS[dir];
+  const isDark = dir === 'A';
+  const profile = state.prefs.profile;
   const mem = loadMemory();
   const hasFacts = mem.facts.length > 0;
+
+  // Keep prefs.personality in sync when tone changes from Settings.
+  const setTone = (v) => {
+    setProfile({ tone: v });
+    setPref('personality', v);
+  };
+
+  const handleRedo = () => {
+    resetOnboarding();
+    onClose();
+  };
+
+  const handleWipe = () => {
+    reset();
+    onClose();
+  };
 
   return (
     <div onClick={onClose} style={{
@@ -19,42 +46,45 @@ export function Settings({ open, onClose, store }) {
       display: 'flex', alignItems: 'flex-start',
     }}>
       <div onClick={e => e.stopPropagation()} className="ctrl-fadein" style={{
-        width: '100%',
-        background: isDark ? '#0a0a0a' : '#f4f1ec',
-        color: isDark ? '#f5f5f2' : '#0d0d0d',
+        width: '100%', background: tok.bg, color: tok.ink,
         borderBottomLeftRadius: 28, borderBottomRightRadius: 28,
-        padding: '60px 22px 28px',
-        maxHeight: '90%', overflowY: 'auto',
+        padding: '52px 22px 32px',
+        maxHeight: '92%', overflowY: 'auto',
+        fontFamily: tok.fontBody,
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 22 }}>
-          <div className={isDark ? 'mono' : 'tight'} style={{
-            fontSize: isDark ? 12 : 24, fontWeight: isDark ? 600 : 700,
-            letterSpacing: isDark ? '0.18em' : '-0.03em',
-            textTransform: isDark ? 'uppercase' : 'none',
-          }}>
-            {isDark ? t('settings.title.a') : t('settings.title.b')}
-          </div>
-          <button onClick={onClose} style={{
+        {/* Header with close */}
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 4 }}>
+          <button onClick={onClose} aria-label="close" style={{
             background: 'transparent', border: 'none', color: 'inherit', cursor: 'pointer',
             fontSize: 28, padding: 0, lineHeight: 1,
           }}>×</button>
         </div>
 
-        <Section label={t('settings.theme')} isDark={isDark}>
-          <Toggle
-            isDark={isDark}
+        {/* Hero: Pebble + greeting */}
+        <Hero tok={tok} name={profile.name} t={t} />
+
+        {/* Profile */}
+        <Section tok={tok} label={t('settings.section.profile')}>
+          <FieldLabel tok={tok} text={t('settings.name')} />
+          <TextInput tok={tok} value={profile.name}
+            placeholder={t('q.1.placeholder')}
+            onChange={v => setProfile({ name: v })} />
+        </Section>
+
+        {/* Appearance */}
+        <Section tok={tok} label={t('settings.section.appearance')}>
+          <FieldLabel tok={tok} text={t('settings.theme')} />
+          <SegToggle tok={tok}
             options={[
               { v: 'A', label: isDark ? t('settings.theme.a') : t('settings.theme.a.lc') },
               { v: 'B', label: isDark ? t('settings.theme.b') : t('settings.theme.b.lc') },
             ]}
-            value={state.prefs.direction}
+            value={dir}
             onChange={v => setPref('direction', v)}
           />
-        </Section>
-
-        <Section label={t('settings.language')} isDark={isDark}>
-          <Toggle
-            isDark={isDark}
+          <Spacer />
+          <FieldLabel tok={tok} text={t('settings.language')} />
+          <SegToggle tok={tok}
             options={[
               { v: 'en', label: t('settings.lang.en') },
               { v: 'it', label: t('settings.lang.it') },
@@ -64,115 +94,231 @@ export function Settings({ open, onClose, store }) {
           />
         </Section>
 
-        <Section label={t('settings.personality')} isDark={isDark}>
-          <Toggle
-            isDark={isDark}
+        {/* Behavior */}
+        <Section tok={tok} label={t('settings.section.behavior')}>
+          <FieldLabel tok={tok} text={t('settings.personality')} />
+          <SegToggle tok={tok}
             options={[
               { v: 'chill', label: t('settings.chill') },
               { v: 'buddy', label: t('settings.buddy') },
               { v: 'hype',  label: t('settings.hype') },
             ]}
-            value={state.prefs.personality}
-            onChange={v => setPref('personality', v)}
+            value={profile.tone}
+            onChange={setTone}
+          />
+          <Spacer />
+          <FieldLabel tok={tok} text={t('settings.directTone.label')} />
+          <SegToggle tok={tok}
+            options={[
+              { v: 'y', label: t('settings.directTone.on') },
+              { v: 'n', label: t('settings.directTone.off') },
+            ]}
+            value={profile.directTone ? 'y' : 'n'}
+            onChange={v => setProfile({ directTone: v === 'y' })}
+          />
+          <Spacer />
+          <FieldLabel tok={tok} text={t('settings.insistence.label')} />
+          <SegToggle tok={tok}
+            options={[
+              { v: 'zero', label: t('q.9.zero') },
+              { v: 'soft', label: t('q.9.soft') },
+              { v: 'hard', label: t('q.9.hard') },
+            ]}
+            value={profile.insistence}
+            onChange={v => setProfile({ insistence: v })}
+          />
+          <Spacer />
+          <FieldLabel tok={tok} text={t('settings.onSkip.label')} />
+          <Choice tok={tok} value={profile.onSkip}
+            onChange={v => setProfile({ onSkip: v })}
+            options={[
+              { v: 'repropose', label: t('q.8.repropose') },
+              { v: 'ask',       label: t('q.8.ask') },
+              { v: 'archive',   label: t('q.8.archive') },
+            ]}
+          />
+          <Spacer />
+          <Toggles tok={tok}
+            items={[
+              { key: 'eveningCheckin', label: t('settings.eveningCheckin.label'), value: profile.eveningCheckin },
+            ]}
+            onToggle={(k) => setProfile({ [k]: !profile[k] })}
           />
         </Section>
 
+        {/* Schedule */}
+        <Section tok={tok} label={t('settings.section.schedule')}>
+          <div style={{ display: 'flex', gap: 16 }}>
+            <HourPicker tok={tok} label={t('settings.wake')} value={profile.wakeHour}
+              onChange={v => setProfile({ wakeHour: v })} />
+            <HourPicker tok={tok} label={t('settings.sleep')} value={profile.sleepHour}
+              onChange={v => setProfile({ sleepHour: v })} />
+          </div>
+          <Spacer />
+          <FieldLabel tok={tok} text={t('settings.noWorkDays')} />
+          <MultiPills tok={tok} values={profile.noWorkDays}
+            onToggle={v => setProfile({ noWorkDays: toggleInArray(profile.noWorkDays, v) })}
+            options={DAYS.map(d => ({ v: d, label: t(`q.6.${d}`) }))}
+          />
+        </Section>
+
+        {/* Focus */}
+        <Section tok={tok} label={t('settings.section.focus')}>
+          <MultiChoice tok={tok} values={profile.areas}
+            onToggle={v => setProfile({ areas: toggleInArray(profile.areas, v) })}
+            options={AREAS.map(a => ({ v: a, label: t(`q.7.${a}`) }))}
+          />
+        </Section>
+
+        {/* Ambient */}
+        <Section tok={tok} label={t('settings.section.ambient')}>
+          <Toggles tok={tok}
+            items={[
+              { key: 'permWeather',  label: t('q.11.weather'),  value: profile.permWeather },
+              { key: 'permLocation', label: t('q.11.location'), value: profile.permLocation },
+              { key: 'permCalendar', label: t('q.11.calendar'), value: profile.permCalendar },
+            ]}
+            onToggle={(k) => setProfile({ [k]: !profile[k] })}
+          />
+        </Section>
+
+        {/* Memory (LLM facts) */}
         {isLlmEnabled() && (
-          <Section label={lang === 'it' ? 'Cosa so di te' : 'What I know about you'} isDark={isDark}>
+          <Section tok={tok} label={t('settings.section.memory')}>
             {hasFacts ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 {mem.facts.map((f, i) => (
                   <div key={i} style={{
                     display: 'flex', alignItems: 'center', gap: 8,
-                    padding: '8px 12px', borderRadius: isDark ? 8 : 12,
+                    padding: '10px 12px', borderRadius: 12,
                     background: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)',
                   }}>
-                    <span className={isDark ? 'mono' : 'tight'} style={{
-                      flex: 1, fontSize: isDark ? 11 : 13,
-                      color: isDark ? 'rgba(245,245,242,0.8)' : 'rgba(13,13,13,0.8)',
+                    <span style={{
+                      flex: 1, fontSize: 13,
+                      color: isDark ? 'rgba(245,245,242,0.85)' : 'rgba(13,13,13,0.8)',
                     }}>· {f}</span>
                     <button onClick={() => { removeFact(i); forceRender(n => n+1); }} style={{
                       background: 'none', border: 'none', cursor: 'pointer',
-                      color: isDark ? 'rgba(245,245,242,0.4)' : 'rgba(13,13,13,0.35)',
-                      fontSize: 16, lineHeight: 1, padding: '0 2px',
+                      color: tok.dim, fontSize: 16, lineHeight: 1, padding: '0 2px',
                     }}>×</button>
                   </div>
                 ))}
-                <button onClick={() => { clearMemory(); forceRender(n => n+1); }} className={isDark ? 'mono' : 'tight'} style={{
-                  marginTop: 4, height: 36, borderRadius: isDark ? 8 : 100,
-                  border: isDark ? '1px solid rgba(255,255,255,0.12)' : '1.5px solid rgba(0,0,0,0.1)',
-                  background: 'transparent', color: isDark ? 'rgba(245,245,242,0.5)' : 'rgba(13,13,13,0.45)',
-                  cursor: 'pointer', fontSize: isDark ? 10 : 12,
-                  letterSpacing: isDark ? '0.08em' : '-0.01em',
-                  textTransform: isDark ? 'uppercase' : 'none',
-                }}>{lang === 'it' ? 'Cancella tutto' : 'Clear all'}</button>
+                <DangerLink tok={tok} onClick={() => { clearMemory(); forceRender(n => n+1); }}
+                  label={lang === 'it' ? 'Cancella tutto' : 'Clear all'}
+                />
               </div>
             ) : (
-              <div className={isDark ? 'mono' : 'tight'} style={{
-                fontSize: isDark ? 11 : 13,
-                color: isDark ? 'rgba(245,245,242,0.4)' : 'rgba(13,13,13,0.4)',
-              }}>
+              <div style={{ fontSize: 13, color: tok.dim }}>
                 {lang === 'it' ? 'Ancora niente — aggiungi qualche reminder.' : 'Nothing yet — add some reminders.'}
               </div>
             )}
           </Section>
         )}
 
-        <button onClick={() => { reset(); onClose(); }} className={isDark ? 'mono' : 'tight'} style={{
-          width: '100%', marginTop: 28, height: 48,
-          borderRadius: isDark ? 10 : 100,
-          border: isDark ? '1px solid rgba(255,255,255,0.18)' : '1.5px solid rgba(0,0,0,0.12)',
-          background: 'transparent', color: 'inherit', cursor: 'pointer',
-          fontSize: isDark ? 12 : 14, fontWeight: 600,
-          letterSpacing: isDark ? '0.08em' : '-0.01em',
-          textTransform: isDark ? 'uppercase' : 'none',
-        }}>
-          {t('settings.reset')}
-        </button>
+        {/* Danger zone */}
+        <Section tok={tok} label={t('settings.section.danger')}>
+          <DangerLink tok={tok} onClick={handleRedo} label={t('settings.redoOnboarding')} />
+          <DangerLink tok={tok} onClick={() => { if (confirmReminders(lang)) clearReminders(); }}
+            label={t('settings.clearReminders')} />
+          <DangerLink tok={tok} onClick={() => { if (confirmWipe(lang)) handleWipe(); }}
+            label={t('settings.wipeAll')} danger />
+        </Section>
       </div>
     </div>
   );
 }
 
-function Section({ label, isDark, children }) {
+function confirmReminders(lang) {
+  return window.confirm(lang === 'it'
+    ? 'Sicura? Cancello tutti i reminder.'
+    : 'Sure? This clears all reminders.');
+}
+function confirmWipe(lang) {
+  return window.confirm(lang === 'it'
+    ? 'Cancello TUTTO: profilo, reminder, memoria. Sicura?'
+    : 'This wipes EVERYTHING: profile, reminders, memory. Sure?');
+}
+
+// ─── building blocks ────────────────────────────────────────
+
+function Hero({ tok, name, t }) {
   return (
-    <div style={{ marginBottom: 18 }}>
-      <div className={isDark ? 'mono' : 'tight'} style={{
-        fontSize: isDark ? 10.5 : 12,
-        color: isDark ? 'rgba(245,245,242,0.5)' : 'rgba(13,13,13,0.55)',
-        letterSpacing: isDark ? '0.18em' : '0.04em',
-        textTransform: 'uppercase', marginBottom: 8,
-        fontWeight: 600,
+    <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 28 }}>
+      <Pebble size={52} eyes="open" />
+      <div style={{ flex: 1 }}>
+        <div style={{
+          fontFamily: tok.fontTitle, fontSize: 22, fontWeight: 700,
+          letterSpacing: tok.titleLetter, lineHeight: 1.1,
+        }}>
+          {name ? t('settings.profile.preview.named', { name }) : t('settings.profile.preview.anon')}
+        </div>
+        <div style={{ fontSize: 13, color: tok.dim, marginTop: 2 }}>
+          {t('settings.profile.preview.sub')}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Section({ tok, label, children }) {
+  return (
+    <div style={{ marginBottom: 26 }}>
+      <div style={{
+        fontFamily: "'JetBrains Mono', monospace",
+        fontSize: 10.5, color: tok.dim,
+        letterSpacing: '0.18em', textTransform: 'uppercase',
+        marginBottom: 12, fontWeight: 600,
       }}>{label}</div>
       {children}
     </div>
   );
 }
 
-function Toggle({ options, value, onChange, isDark }) {
+function FieldLabel({ tok, text }) {
+  return (
+    <div style={{
+      fontSize: 12, color: tok.dim, fontWeight: 500,
+      marginBottom: 8, letterSpacing: '-0.005em',
+    }}>{text}</div>
+  );
+}
+
+function Spacer() { return <div style={{ height: 18 }} />; }
+
+function SegToggle({ tok, options, value, onChange }) {
   return (
     <div style={{
       display: 'flex', gap: 4, padding: 4,
-      borderRadius: isDark ? 10 : 100,
-      background: isDark ? 'rgba(245,245,242,0.06)' : 'rgba(0,0,0,0.05)',
-      border: isDark ? '1px solid rgba(255,255,255,0.06)' : '1px solid rgba(0,0,0,0.05)',
+      borderRadius: 100,
+      background: tok === TOKENS.A ? 'rgba(245,245,242,0.06)' : 'rgba(0,0,0,0.05)',
+      border: `1px solid ${tok.hair}`,
     }}>
       {options.map(o => (
-        <button key={o.v} onClick={() => onChange(o.v)} className={isDark ? 'mono' : 'tight'} style={{
-          flex: 1, height: 40,
-          borderRadius: isDark ? 8 : 100,
+        <button key={o.v} onClick={() => onChange(o.v)} style={{
+          flex: 1, height: 38, borderRadius: 100,
           border: 'none', cursor: 'pointer',
-          background: value === o.v
-            ? (isDark ? '#f5f5f2' : '#0d0d0d')
-            : 'transparent',
-          color: value === o.v
-            ? (isDark ? '#0a0a0a' : '#f4f1ec')
-            : 'inherit',
-          fontSize: isDark ? 11 : 13, fontWeight: 600,
-          letterSpacing: isDark ? '0.06em' : '-0.01em',
+          background: value === o.v ? tok.ink : 'transparent',
+          color: value === o.v ? tok.bg : tok.ink,
+          fontFamily: tok.fontBody, fontSize: 13, fontWeight: 600,
+          letterSpacing: '-0.005em',
           transition: 'all .2s',
         }}>{o.label}</button>
       ))}
     </div>
+  );
+}
+
+function DangerLink({ tok, onClick, label, danger = false }) {
+  return (
+    <button onClick={onClick} style={{
+      display: 'block', width: '100%',
+      textAlign: 'left',
+      padding: '14px 4px',
+      background: 'transparent', border: 'none',
+      borderTop: `1px solid ${tok.hair}`,
+      color: danger ? '#d44' : tok.ink,
+      fontFamily: tok.fontBody, fontSize: 14, fontWeight: 500,
+      cursor: 'pointer',
+    }}>{label} →</button>
   );
 }
