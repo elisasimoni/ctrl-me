@@ -92,12 +92,12 @@ const SCHEMA = {
   additionalProperties: false,
 };
 
-export async function analyzeReminder({ text, lang, personality }) {
+export async function analyzeReminder({ text, lang, personality, profile }) {
   const c = client();
   if (!c) throw new Error('LLM not configured');
 
-  // Memory goes in the USER message so system prompt stays cached
-  const memory = memoryBlock();
+  // Memory (profile + facts) goes in the USER message so system prompt stays cached
+  const memory = memoryBlock(profile);
   const userContent = `${memory}Input: ${JSON.stringify({ text, lang, personality })}\n\nOutput as JSON.`;
 
   const response = await c.messages.create({

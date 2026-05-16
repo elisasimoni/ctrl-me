@@ -91,7 +91,7 @@ function localBody({ icon, personality, lang }) {
     ?? '';
 }
 
-export function AddSheet({ open, onClose, onAdd, personality, theme }) {
+export function AddSheet({ open, onClose, onAdd, personality, profile, theme }) {
   const { t, lang } = useT();
   const [text, setText] = useState('');
   const [analysis, setAnalysis] = useState(null);
@@ -127,7 +127,7 @@ export function AddSheet({ open, onClose, onAdd, personality, theme }) {
 
     setLoading(true); setError(null);
     try {
-      const result = await analyzeReminder({ text: trimmed, lang, personality });
+      const result = await analyzeReminder({ text: trimmed, lang, personality, profile });
       if (result.needs_followup && result.followups.length > 0) {
         setAnalysis(result);
         setLoading(false);
@@ -160,7 +160,7 @@ export function AddSheet({ open, onClose, onAdd, personality, theme }) {
     }
     setLoading(true);
     try {
-      const result = await analyzeReminder({ text: merged, lang, personality });
+      const result = await analyzeReminder({ text: merged, lang, personality, profile });
       onAdd({ icon: result.icon, tag: result.tag, title: result.title, body: result.body, time: result.time, when: result.when });
       onClose();
     } catch (e) {

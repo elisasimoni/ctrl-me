@@ -19,12 +19,40 @@ function buildSeed(t) {
   ];
 }
 
+const DEFAULT_PROFILE = {
+  name: '',
+  tone: 'buddy',               // 'chill' | 'buddy' | 'hype' (mirrors prefs.personality)
+  directTone: true,            // can I be direct with you?
+  wakeHour: 8,                 // 0-23
+  sleepHour: 23,               // 0-23
+  occupation: 'student',       // 'student' | 'work' | 'both' | 'other'
+  noWorkDays: ['sat', 'sun'],  // subset of mon..sun
+  areas: ['study'],            // ['study','health','social','work','home','habits']
+  onSkip: 'ask',               // 'repropose' | 'ask' | 'archive'
+  insistence: 'soft',          // 'zero' | 'soft' | 'hard'
+  eveningCheckin: true,
+  permWeather: false,
+  permLocation: false,
+  permCalendar: false,
+  completedAt: null,           // ISO string when questionnaire finished
+};
+
 const DEFAULT_PREFS = {
   direction: 'B', // 'A' | 'B'
   onboarded: false,
   themeChosen: false,
+  profileDone: false,
   personality: 'buddy', // 'chill' | 'buddy' | 'hype'
+  profile: DEFAULT_PROFILE,
 };
+
+export { DEFAULT_PROFILE };
+
+function mergePrefs(saved) {
+  const base = { ...DEFAULT_PREFS, ...(saved ?? {}) };
+  base.profile = { ...DEFAULT_PROFILE, ...((saved && saved.profile) || {}) };
+  return base;
+}
 
 function load() {
   try {
@@ -33,7 +61,7 @@ function load() {
     const parsed = JSON.parse(raw);
     return {
       reminders: parsed.reminders ?? null,
-      prefs: { ...DEFAULT_PREFS, ...(parsed.prefs ?? {}) },
+      prefs: mergePrefs(parsed.prefs),
     };
   } catch {
     return null;
@@ -45,7 +73,7 @@ export function useStore(t, lang) {
     const loaded = load();
     // Already onboarded → use persisted reminders (empty list if they deleted everything)
     if (loaded?.prefs?.onboarded) {
-      return { reminders: loaded.reminders ?? [], prefs: { ...DEFAULT_PREFS, ...loaded.prefs } };
+      return { reminders: loaded.reminders ?? [], prefs: mergePrefs(loaded.prefs) };
     }
     // Not yet onboarded → show seeds as preview inside onboarding
     return { reminders: buildSeed(t), prefs: { ...DEFAULT_PREFS, ...(loaded?.prefs ?? {}) } };
@@ -114,9 +142,16 @@ export function useStore(t, lang) {
     });
   }, []);
 
+  const setProfile = useCallback((patch) => {
+    setState(s => ({
+      ...s,
+      prefs: { ...s.prefs, profile: { ...s.prefs.profile, ...patch } },
+    }));
+  }, []);
+
   const reset = useCallback(() => {
-    setState({ reminders: buildSeed(t), prefs: DEFAULT_PREFS });
+    setState({ reminders: buildSeed(t), prefs: mergePrefs(null) });
   }, [t]);
 
-  return { state, toggleDone, snooze, addReminder, setPref, reset };
+  return { state, toggleDone, snooze, addReminder, setPref, setProfile, reset };
 }
