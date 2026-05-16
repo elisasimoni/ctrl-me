@@ -154,6 +154,36 @@ export function useStore(/* t, lang kept for signature compat */) {
     });
   }, []);
 
+  // Patch an existing reminder (e.g. reschedule it to a new time/when).
+  // Logs a 'rescheduled' event so behavior aggregation can learn from it.
+  const updateReminder = useCallback((id, patch) => {
+    setState(s => {
+      const r = s.reminders.find(x => x.id === id);
+      if (!r) return s;
+      const updated = { ...r, ...patch };
+      return {
+        ...s,
+        reminders: s.reminders.map(x => x.id === id ? updated : x),
+        behaviorLog: appendEvent(s.behaviorLog, {
+          type: 'rescheduled',
+          title: r.title, tag: r.tag, icon: r.icon,
+          from: { time: r.time, when: r.when },
+          to:   { time: updated.time, when: updated.when },
+          at: Date.now(),
+        }),
+      };
+    });
+  }, []);
+
+  // Remove past snooze events for a given title — used after the user
+  // moves a reminder so the "spesso saltato" badge resets.
+  const clearSkipsForTitle = useCallback((title) => {
+    setState(s => ({
+      ...s,
+      behaviorLog: s.behaviorLog.filter(e => !(e.type === 'snooze' && e.title === title)),
+    }));
+  }, []);
+
   const setPref = useCallback((key, value) => {
     setState(s => ({ ...s, prefs: { ...s.prefs, [key]: value } }));
   }, []);
@@ -188,5 +218,5 @@ export function useStore(/* t, lang kept for signature compat */) {
     setState(s => ({ ...s, behaviorLog: [] }));
   }, []);
 
-  return { state, toggleDone, snooze, addReminder, addCluster, setPref, setProfile, reset, resetOnboarding, clearReminders, clearBehaviorLog };
+  return { state, toggleDone, snooze, addReminder, addCluster, updateReminder, clearSkipsForTitle, setPref, setProfile, reset, resetOnboarding, clearReminders, clearBehaviorLog };
 }

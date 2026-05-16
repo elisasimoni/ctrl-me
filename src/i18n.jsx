@@ -162,6 +162,8 @@ const dict = {
     // behavior signals
     'behavior.oftenSkipped': 'often skipped',
     'behavior.times': '× this week',
+    'behavior.move.cta': 'Try a different time?',
+    'behavior.move.cancel': 'leave it',
 
     'settings.section.behaviorLog': 'What I notice',
     'settings.behavior.empty': 'Nothing notable yet. Add and skip a few reminders — patterns appear in the second week.',
@@ -431,6 +433,8 @@ const dict = {
 
     'behavior.oftenSkipped': 'spesso saltato',
     'behavior.times': '× questa settimana',
+    'behavior.move.cta': 'Proviamo un\'altra ora?',
+    'behavior.move.cancel': 'lascia stare',
 
     'settings.section.behaviorLog': 'Cosa noto di te',
     'settings.behavior.empty': 'Ancora niente di rilevante. Crea e skippa qualche reminder — i pattern emergono dalla seconda settimana.',

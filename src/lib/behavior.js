@@ -11,6 +11,25 @@
 
 const WEEK = 7 * 24 * 60 * 60 * 1000;
 
+// Three sensible alternative times derived from the user's profile.
+// Skips the slot that matches the current `when` so the user always
+// sees three NEW options.
+export function suggestTimes(profile, currentWhen) {
+  const wake = profile?.wakeHour ?? 8;
+  const sleep = profile?.sleepHour ?? 23;
+  const slots = [
+    { time: pad(wake + 1), when: 'morning' },
+    { time: '13:00',        when: 'afternoon' },
+    { time: pad(Math.max(wake + 2, Math.min(sleep - 2, 20))), when: 'evening' },
+  ];
+  return slots.filter(s => s.when !== currentWhen).slice(0, 3);
+}
+
+function pad(h) {
+  const n = Math.max(0, Math.min(23, h));
+  return `${String(n).padStart(2, '0')}:00`;
+}
+
 export function recentEvents(log, windowMs = WEEK) {
   const cutoff = Date.now() - windowMs;
   return (log ?? []).filter(e => e.at >= cutoff);

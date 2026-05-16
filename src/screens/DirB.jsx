@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { Icon, Pebble } from '../atoms.jsx';
 import { useT, formatDate } from '../i18n.jsx';
 import { groupReminders } from '../lib/clusters.js';
-import { frequentlySkipped } from '../lib/behavior.js';
+import { frequentlySkipped, suggestTimes } from '../lib/behavior.js';
 import { PebbleHint } from '../components/PebbleHint.jsx';
 import { WeatherBanner } from '../components/WeatherBanner.jsx';
 import { openMaps } from '../native/maps.js';
@@ -196,7 +196,8 @@ function BubbleL({ text, delay = 0 }) {
 // ─── Home ──────────────────────────────────────────────────
 export function B_Home({ store, onCompose, onSettings, onProfile, onAddReminder }) {
   const { t, lang } = useT();
-  const { state, toggleDone, snooze } = store;
+  const { state, toggleDone, snooze, updateReminder, clearSkipsForTitle } = store;
+  const [movingId, setMovingId] = useState(null);
   const items = state.reminders;
   const [drag, setDrag] = useState({ id: null, dx: 0, startX: 0 });
 
@@ -341,10 +342,20 @@ export function B_Home({ store, onCompose, onSettings, onProfile, onAddReminder 
                     fontSize: 13, color: isDone ? DIM : INK_SOFT, lineHeight: 1.4, letterSpacing: '-0.005em',
                   }}>{item.body}</div>
                   {!isDone && skippedCounts.has(item.title) && (
-                    <div className="mono" style={{
-                      marginTop: 6, fontSize: 10, color: DIM,
-                      letterSpacing: '0.12em', textTransform: 'uppercase',
-                    }}>↺ {skippedCounts.get(item.title)}{t('behavior.times')}</div>
+                    <SkipBlock
+                      item={item}
+                      count={skippedCounts.get(item.title)}
+                      open={movingId === item.id}
+                      onOpen={() => setMovingId(item.id)}
+                      onCancel={() => setMovingId(null)}
+                      onPick={(time, when) => {
+                        updateReminder(item.id, { time, when });
+                        clearSkipsForTitle(item.title);
+                        setMovingId(null);
+                      }}
+                      profile={state.prefs.profile}
+                      t={t}
+                    />
                   )}
                   {!isDone && (item.icon === 'pin' || item.location) && (
                     <button
@@ -505,6 +516,54 @@ export function B_Notification({ onDismiss }) {
         <div className="tight" style={{ fontSize: 13, color: 'rgba(255,255,255,0.45)', letterSpacing: '-0.005em' }}>
           {t('nudge.tagline')} <span className="serif-it">{t('nudge.tagline.italic')}</span>
         </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Inline "spostiamo?" panel on frequently-skipped reminders ─────
+function SkipBlock({ item, count, open, onOpen, onCancel, onPick, profile, t }) {
+  if (!open) {
+    return (
+      <button onClick={(e) => { e.stopPropagation(); onOpen(); }}
+        className="mono"
+        style={{
+          marginTop: 6, padding: 0, background: 'transparent', border: 'none',
+          color: DIM, fontSize: 10, letterSpacing: '0.12em',
+          textTransform: 'uppercase', cursor: 'pointer',
+          fontFamily: "'JetBrains Mono', monospace",
+        }}>
+        ↺ {count}{t('behavior.times')} · {t('behavior.move.cta')}
+      </button>
+    );
+  }
+  const slots = suggestTimes(profile, item.when);
+  return (
+    <div onClick={(e) => e.stopPropagation()} style={{ marginTop: 8 }}>
+      <div className="mono" style={{
+        fontSize: 10, color: DIM, letterSpacing: '0.12em',
+        textTransform: 'uppercase', marginBottom: 6,
+      }}>{t('behavior.move.cta')}</div>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+        {slots.map(s => (
+          <button key={s.time}
+            onClick={(e) => { e.stopPropagation(); onPick(s.time, s.when); }}
+            className="mono"
+            style={{
+              padding: '6px 12px', borderRadius: 100,
+              border: `1px solid ${INK}`, background: INK, color: PAPER,
+              fontSize: 11, fontWeight: 600, letterSpacing: '0.04em',
+              cursor: 'pointer', fontFamily: "'JetBrains Mono', monospace",
+            }}>{s.time}</button>
+        ))}
+        <button onClick={(e) => { e.stopPropagation(); onCancel(); }}
+          className="mono"
+          style={{
+            padding: '6px 12px', borderRadius: 100,
+            border: `1px solid ${HAIR}`, background: 'transparent', color: DIM,
+            fontSize: 11, fontWeight: 500, letterSpacing: '0.02em',
+            cursor: 'pointer', fontFamily: "'JetBrains Mono', monospace",
+          }}>{t('behavior.move.cancel')}</button>
       </div>
     </div>
   );
