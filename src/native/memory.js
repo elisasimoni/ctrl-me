@@ -34,10 +34,34 @@ export function clearMemory() {
   saveMemory({ facts: [] });
 }
 
+// Compact profile summary built from the onboarding questionnaire.
+function profileSummary(profile) {
+  if (!profile) return '';
+  const bits = [];
+  if (profile.name) bits.push(`name: ${profile.name}`);
+  if (profile.tone) bits.push(`preferred tone: ${profile.tone}`);
+  if (profile.directTone === false) bits.push('prefers soft phrasing');
+  if (profile.directTone === true) bits.push('ok with direct talk');
+  if (profile.wakeHour != null && profile.sleepHour != null) {
+    bits.push(`awake ${String(profile.wakeHour).padStart(2,'0')}:00–${String(profile.sleepHour).padStart(2,'0')}:00`);
+  }
+  if (profile.occupation) bits.push(`role: ${profile.occupation}`);
+  if (profile.noWorkDays?.length) bits.push(`no-work days: ${profile.noWorkDays.join(',')}`);
+  if (profile.areas?.length) bits.push(`focus areas: ${profile.areas.join(',')}`);
+  if (profile.onSkip) bits.push(`on skip: ${profile.onSkip}`);
+  if (profile.insistence) bits.push(`pressure: ${profile.insistence}`);
+  if (profile.eveningCheckin) bits.push('opted into evening check-in');
+  return bits.length ? `User profile: ${bits.join('; ')}.` : '';
+}
+
 // Returns a compact string to prepend to the user message.
-// Kept short so it adds ~50-100 tokens max.
-export function memoryBlock() {
+// Kept short so it adds ~80-150 tokens max.
+export function memoryBlock(profile) {
   const { facts } = loadMemory();
-  if (!facts.length) return '';
-  return `What I know about this user:\n${facts.map(f => `- ${f}`).join('\n')}\n\n`;
+  const summary = profileSummary(profile);
+  const factsLine = facts.length
+    ? `What I know about this user:\n${facts.map(f => `- ${f}`).join('\n')}`
+    : '';
+  if (!summary && !factsLine) return '';
+  return [summary, factsLine].filter(Boolean).join('\n') + '\n\n';
 }

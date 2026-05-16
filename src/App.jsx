@@ -6,17 +6,19 @@ import { B_Onboarding, B_Home, B_Notification } from './screens/DirB.jsx';
 import { AddSheet } from './components/AddSheet.jsx';
 import { Settings } from './components/Settings.jsx';
 import { ThemeChooser } from './components/ThemeChooser.jsx';
+import { OnboardingQuestionnaire } from './components/OnboardingQuestionnaire.jsx';
 import { useT } from './i18n.jsx';
 
 export default function App() {
   const { t, lang } = useT();
   const store = useStore(t, lang);
-  const { state, addReminder, setPref } = store;
+  const { state, addReminder, setPref, setProfile } = store;
   const standalone = useIsStandalone();
 
   const [view, setView] = useState(() => {
     if (state.prefs.onboarded) return 'home';
     if (!state.prefs.themeChosen) return 'theme';
+    if (!state.prefs.profileDone) return 'questionnaire';
     return 'onboarding';
   });
   const [composeOpen, setComposeOpen] = useState(false);
@@ -46,12 +48,30 @@ export default function App() {
   const pickTheme = (chosenDir) => {
     setPref('direction', chosenDir);
     setPref('themeChosen', true);
+    setView('questionnaire');
+  };
+
+  const finishQuestionnaire = () => {
+    // sync personality with chosen tone so existing LLM call honors it
+    if (state.prefs.profile.tone) setPref('personality', state.prefs.profile.tone);
+    setProfile({ completedAt: new Date().toISOString() });
+    setPref('profileDone', true);
     setView('onboarding');
   };
 
   const renderScreen = () => {
     if (view === 'theme') {
       return <ThemeChooser onPick={pickTheme} />;
+    }
+    if (view === 'questionnaire') {
+      return (
+        <OnboardingQuestionnaire
+          dir={dir}
+          profile={state.prefs.profile}
+          setProfile={setProfile}
+          onDone={finishQuestionnaire}
+        />
+      );
     }
     if (view === 'onboarding') {
       return dir === 'A'
@@ -78,6 +98,7 @@ export default function App() {
         onClose={() => setComposeOpen(false)}
         onAdd={addReminder}
         personality={state.prefs.personality}
+        profile={state.prefs.profile}
         theme={dir}
       />
       <Settings open={settingsOpen} onClose={() => setSettingsOpen(false)} store={store} />
