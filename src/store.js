@@ -2,23 +2,6 @@ import { useEffect, useState, useCallback } from 'react';
 
 const KEY = 'ctrlme.state.v1';
 
-function buildSeed(t) {
-  return [
-    { id: 1, time: '08:42', when: 'morning', icon: 'rain',
-      tag: t('seed.r1.tag'), title: t('seed.r1.title'), body: t('seed.r1.body'),
-      done: false, seed: true },
-    { id: 2, time: '12:00', when: 'noon', icon: 'pill',
-      tag: t('seed.r2.tag'), title: t('seed.r2.title'), body: t('seed.r2.body'),
-      done: false, seed: true },
-    { id: 3, time: '15:30', when: 'afternoon', icon: 'pin',
-      tag: t('seed.r3.tag'), title: t('seed.r3.title'), body: t('seed.r3.body'),
-      done: false, seed: true },
-    { id: 4, time: '19:00', when: 'evening', icon: 'wallet',
-      tag: t('seed.r4.tag'), title: t('seed.r4.title'), body: t('seed.r4.body'),
-      done: false, seed: true },
-  ];
-}
-
 const DEFAULT_PROFILE = {
   name: '',
   tone: 'buddy',               // 'chill' | 'buddy' | 'hype' (mirrors prefs.personality)
@@ -34,15 +17,15 @@ const DEFAULT_PROFILE = {
   permWeather: false,
   permLocation: false,
   permCalendar: false,
-  completedAt: null,           // ISO string when questionnaire finished
+  completedAt: null,
 };
 
 const DEFAULT_PREFS = {
-  direction: 'B', // 'A' | 'B'
+  direction: 'B',
   onboarded: false,
   themeChosen: false,
   profileDone: false,
-  personality: 'buddy', // 'chill' | 'buddy' | 'hype'
+  personality: 'buddy',
   profile: DEFAULT_PROFILE,
 };
 
@@ -60,7 +43,7 @@ function load() {
     if (!raw) return null;
     const parsed = JSON.parse(raw);
     return {
-      reminders: parsed.reminders ?? null,
+      reminders: parsed.reminders ?? [],
       prefs: mergePrefs(parsed.prefs),
     };
   } catch {
@@ -68,33 +51,14 @@ function load() {
   }
 }
 
-export function useStore(t, lang) {
+export function useStore(/* t, lang kept for signature compat */) {
   const [state, setState] = useState(() => {
     const loaded = load();
-    // Already onboarded → use persisted reminders (empty list if they deleted everything)
-    if (loaded?.prefs?.onboarded) {
-      return { reminders: loaded.reminders ?? [], prefs: mergePrefs(loaded.prefs) };
-    }
-    // Not yet onboarded → show seeds as preview inside onboarding
-    return { reminders: buildSeed(t), prefs: { ...DEFAULT_PREFS, ...(loaded?.prefs ?? {}) } };
+    return {
+      reminders: loaded?.reminders ?? [],
+      prefs: mergePrefs(loaded?.prefs),
+    };
   });
-
-  // Re-translate seed reminders when language changes (only the untouched ones).
-  useEffect(() => {
-    setState(s => {
-      const fresh = buildSeed(t);
-      return {
-        ...s,
-        reminders: s.reminders.map(r => {
-          if (!r.seed) return r;
-          const seed = fresh.find(f => f.id === r.id);
-          if (!seed) return r;
-          return { ...r, tag: seed.tag, title: seed.title, body: seed.body };
-        }),
-      };
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [lang]);
 
   useEffect(() => {
     localStorage.setItem(KEY, JSON.stringify(state));
@@ -125,21 +89,13 @@ export function useStore(t, lang) {
           title: partial.title,
           body: partial.body ?? '',
           done: false,
-          seed: false,
         },
       ],
     }));
   }, []);
 
   const setPref = useCallback((key, value) => {
-    setState(s => {
-      const newPrefs = { ...s.prefs, [key]: value };
-      // Completing onboarding → wipe seeds, start with empty list
-      if (key === 'onboarded' && value === true) {
-        return { ...s, prefs: newPrefs, reminders: s.reminders.filter(r => !r.seed) };
-      }
-      return { ...s, prefs: newPrefs };
-    });
+    setState(s => ({ ...s, prefs: { ...s.prefs, [key]: value } }));
   }, []);
 
   const setProfile = useCallback((patch) => {
@@ -149,9 +105,23 @@ export function useStore(t, lang) {
     }));
   }, []);
 
+  // Full nuke — used by "reset everything" in settings.
   const reset = useCallback(() => {
-    setState({ reminders: buildSeed(t), prefs: mergePrefs(null) });
-  }, [t]);
+    setState({ reminders: [], prefs: mergePrefs(null) });
+  }, []);
 
-  return { state, toggleDone, snooze, addReminder, setPref, setProfile, reset };
+  // Replay onboarding without wiping reminders.
+  const resetOnboarding = useCallback(() => {
+    setState(s => ({
+      ...s,
+      prefs: { ...s.prefs, onboarded: false, profileDone: false, themeChosen: false },
+    }));
+  }, []);
+
+  // Clear reminders only.
+  const clearReminders = useCallback(() => {
+    setState(s => ({ ...s, reminders: [] }));
+  }, []);
+
+  return { state, toggleDone, snooze, addReminder, setPref, setProfile, reset, resetOnboarding, clearReminders };
 }

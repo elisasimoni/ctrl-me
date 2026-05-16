@@ -249,7 +249,10 @@ export function B_Home({ store, onCompose, onSettings, onAddReminder }) {
         <div className="tight" style={{
           fontSize: 38, fontWeight: 700, lineHeight: 1.0, letterSpacing: '-0.04em', marginTop: 18,
         }}>
-          {t('home.greeting')}<br/><span className="serif-it" style={{ fontWeight: 400 }}>{t('home.greeting.italic')}</span>
+          {state.prefs.profile.name
+            ? t('home.helloName', { name: state.prefs.profile.name })
+            : t('home.greeting')}
+          <br/><span className="serif-it" style={{ fontWeight: 400 }}>{t('home.greeting.italic')}</span>
         </div>
       </div>
 

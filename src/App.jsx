@@ -11,16 +11,24 @@ import { useT } from './i18n.jsx';
 
 export default function App() {
   const { t, lang } = useT();
-  const store = useStore(t, lang);
+  const store = useStore();
   const { state, addReminder, setPref, setProfile } = store;
   const standalone = useIsStandalone();
 
-  const [view, setView] = useState(() => {
-    if (state.prefs.onboarded) return 'home';
-    if (!state.prefs.themeChosen) return 'theme';
-    if (!state.prefs.profileDone) return 'questionnaire';
+  const deriveView = (prefs) => {
+    if (prefs.onboarded) return 'home';
+    if (!prefs.themeChosen) return 'theme';
+    if (!prefs.profileDone) return 'questionnaire';
     return 'onboarding';
-  });
+  };
+  const [view, setView] = useState(() => deriveView(state.prefs));
+
+  // Reset back to the right step when "redo onboarding" or "wipe" flip the flags.
+  useEffect(() => {
+    if (!state.prefs.onboarded && view === 'home') {
+      setView(deriveView(state.prefs));
+    }
+  }, [state.prefs.onboarded, state.prefs.themeChosen, state.prefs.profileDone]);
   const [composeOpen, setComposeOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [nudgeOpen, setNudgeOpen] = useState(false);
