@@ -66,6 +66,44 @@ export function behaviorStats(log, { windowMs = WEEK } = {}) {
   return { skipped, completionRate, peakWhen, hasAnything: skipped.length > 0 || completionRate != null || peakWhen };
 }
 
+// Silent streak: count of consecutive 'done' events starting from the
+// most recent log entry. 'snooze' or 'undone' break the streak. Other
+// event types ('created', 'rescheduled', 'cluster_created') are skipped
+// over without breaking. We never show this to the user — it only
+// flavours the LLM tone.
+export function currentStreak(log) {
+  if (!log?.length) return 0;
+  let n = 0;
+  for (let i = log.length - 1; i >= 0; i--) {
+    const e = log[i];
+    if (e.type === 'done') n += 1;
+    else if (e.type === 'snooze' || e.type === 'undone') break;
+    // skip 'created', 'rescheduled', 'cluster_created'
+  }
+  return n;
+}
+
+// Per-title reschedule habits over a wide window (4 weeks). Returns
+// [{title, when, count}] for titles the user has rescheduled to the
+// SAME 'when' slot 2+ times — i.e. learned preferences. Used by Haiku
+// to pre-empt next time the user asks about the same thing.
+export function reschedulingHabits(log, { windowMs = 4 * WEEK, threshold = 2 } = {}) {
+  if (!log?.length) return [];
+  const cutoff = Date.now() - windowMs;
+  const counts = {}; // key = `${title}|${toWhen}`
+  log.filter(e => e.type === 'rescheduled' && e.at >= cutoff && e.to?.when).forEach(e => {
+    const key = `${e.title}|${e.to.when}`;
+    counts[key] = (counts[key] ?? 0) + 1;
+  });
+  return Object.entries(counts)
+    .filter(([, n]) => n >= threshold)
+    .map(([key, count]) => {
+      const [title, when] = key.split('|');
+      return { title, when, count };
+    })
+    .sort((a, b) => b.count - a.count);
+}
+
 // Top 1–2 short observations to feed into the LLM memory block.
 // Always returns a string (possibly empty).
 export function behaviorSummary(log) {
@@ -75,8 +113,9 @@ export function behaviorSummary(log) {
 
   const bits = [];
 
-  // Skipped-pattern: top 1 title skipped 3+ times
-  const skipped = frequentlySkipped(log).slice(0, 1);
+  // Skipped patterns — up to 2 titles, so Haiku can match new creations
+  // against a small set of "watch out" items.
+  const skipped = frequentlySkipped(log).slice(0, 2);
   skipped.forEach(s => {
     bits.push(`has dismissed "${s.title}" ${s.count}× in last 7 days`);
   });
@@ -97,6 +136,16 @@ export function behaviorSummary(log) {
   });
   const top = Object.entries(doneByWhen).sort((a, b) => b[1] - a[1])[0];
   if (top && top[1] >= 3) bits.push(`most reliable in the ${top[0]}`);
+
+  // Silent streak — Haiku can soften / tighten tone, must never name it.
+  const streak = currentStreak(log);
+  if (streak >= 5) bits.push(`silent streak: ${streak} consecutive completions (DO NOT mention)`);
+
+  // Learned reschedule preferences — top 2
+  const habits = reschedulingHabits(log).slice(0, 2);
+  habits.forEach(h => {
+    bits.push(`usually moves "${h.title}" to ${h.when}`);
+  });
 
   return bits.length ? `Behavior: ${bits.join('; ')}.` : '';
 }
