@@ -12,7 +12,7 @@ import { useT } from './i18n.jsx';
 export default function App() {
   const { t, lang } = useT();
   const store = useStore();
-  const { state, addReminder, setPref, setProfile } = store;
+  const { state, addReminder, addCluster, setPref, setProfile } = store;
   const standalone = useIsStandalone();
 
   const deriveView = (prefs) => {
@@ -105,6 +105,7 @@ export default function App() {
         open={composeOpen}
         onClose={() => setComposeOpen(false)}
         onAdd={addReminder}
+        onAddCluster={addCluster}
         personality={state.prefs.personality}
         profile={state.prefs.profile}
         theme={dir}

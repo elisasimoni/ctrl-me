@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Icon, APill, ADotGrid } from '../atoms.jsx';
 import { useT, formatDate } from '../i18n.jsx';
+import { groupReminders } from '../lib/clusters.js';
 
 const BG = '#0a0a0a';
 const INK = '#f5f5f2';
@@ -199,11 +200,17 @@ export function A_Home({ store, onCompose, onSettings }) {
       </div>
 
       <div className="cm-feed" style={{ position: 'absolute', top: 268, left: 0, right: 0, bottom: 110, overflow: 'auto', padding: '0 16px' }}>
-        {items.map(item => {
+        {groupReminders(items).map(item => {
           const isDone = item.done;
           const dx = drag.id === item.id ? drag.dx : 0;
+          const isChild = item._isChild;
+          const linkedCount = item._linked || 0;
           return (
-            <div key={item.id} style={{ position: 'relative', marginBottom: 8 }}>
+            <div key={item.id} style={{
+              position: 'relative',
+              marginBottom: isChild ? 4 : 8,
+              marginLeft: isChild ? 16 : 0,
+            }}>
               <div style={{
                 position: 'absolute', inset: 0, borderRadius: 12,
                 background: INK, color: BG, display: 'flex',
@@ -241,9 +248,18 @@ export function A_Home({ store, onCompose, onSettings }) {
                   {isDone ? <Icon name="check" size={15} sw={2} /> : <Icon name={item.icon} size={15} stroke={INK} />}
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div className="mono" style={{ fontSize: 9.5, color: DIM, letterSpacing: '0.14em', marginBottom: 3 }}>{item.tag}</div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
+                    <div className="mono" style={{ fontSize: 9.5, color: DIM, letterSpacing: '0.14em' }}>{item.tag}</div>
+                    {linkedCount > 0 && (
+                      <span className="mono" style={{
+                        padding: '1px 6px', borderRadius: 4,
+                        background: INK, color: BG,
+                        fontSize: 9, fontWeight: 700, letterSpacing: '0.06em',
+                      }}>+{linkedCount}</span>
+                    )}
+                  </div>
                   <div className="tight" style={{
-                    fontSize: 17, fontWeight: 600, lineHeight: 1.2,
+                    fontSize: isChild ? 15 : 17, fontWeight: 600, lineHeight: 1.2,
                     color: isDone ? DONE : INK,
                     textDecoration: isDone ? 'line-through' : 'none', textDecorationThickness: 1,
                   }}>{item.title}</div>

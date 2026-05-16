@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Icon } from '../atoms.jsx';
 import { useT } from '../i18n.jsx';
 import { analyzeReminder, isLlmEnabled } from '../lib/llm.js';
+import { ConstellationReveal } from './ConstellationReveal.jsx';
 
 // Local fallback parser — runs when no API key is configured.
 // Cleans title, extracts time, picks icon — without LLM.
@@ -85,33 +86,71 @@ const LOCAL_BODIES = {
   },
 };
 
+const DEMO_CLUSTER = {
+  parent: { icon: 'pin', tag: 'ESAME · ANALISI', title: 'Analisi martedì 10:00.', body: 'Ti preparo la costellazione?', time: '10:00', when: 'morning' },
+  why: 'Aggancio sonno + ripasso + caffè per arrivarci lucida.',
+  children: [
+    { title: 'Ripasso domenica sera.', body: 'Ultima passata, niente tutta la notte.', icon: 'spark', tag: 'RIPASSO', time: '20:00', when: 'evening' },
+    { title: 'Nanna entro le 23.', body: 'Cervello fresco vale 10 punti.', icon: 'moon', tag: 'SONNO', time: '23:00', when: 'evening' },
+    { title: 'Sveglia alle 7:30.', body: 'Tempo per colazione vera.', icon: 'spark', tag: 'SVEGLIA', time: '07:30', when: 'morning' },
+    { title: 'Caffè ma non troppo.', body: 'Uno solo, tranqui.', icon: 'spark', tag: 'CAFFÈ', time: '08:30', when: 'morning' },
+  ],
+};
+
 function localBody({ icon, personality, lang }) {
   return LOCAL_BODIES[lang]?.[icon]?.[personality]
     ?? LOCAL_BODIES.en[icon]?.[personality]
     ?? '';
 }
 
-export function AddSheet({ open, onClose, onAdd, personality, profile, theme }) {
+export function AddSheet({ open, onClose, onAdd, onAddCluster, personality, profile, theme }) {
   const { t, lang } = useT();
   const [text, setText] = useState('');
   const [analysis, setAnalysis] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [extra, setExtra] = useState('');
+  const [clusterPending, setClusterPending] = useState(null); // { parent, why, children }
   const ref = useRef(null);
 
   useEffect(() => {
     if (open) setTimeout(() => ref.current?.focus(), 100);
-    else { setText(''); setAnalysis(null); setError(null); setExtra(''); setLoading(false); }
+    else { setText(''); setAnalysis(null); setError(null); setExtra(''); setLoading(false); setClusterPending(null); }
   }, [open]);
 
   if (!open) return null;
+
+  // Constellation reveal takes over the whole screen when a cluster is proposed.
+  if (clusterPending) {
+    const { parent, why, children } = clusterPending;
+    return (
+      <ConstellationReveal
+        theme={theme}
+        parent={parent}
+        why={why}
+        children={children}
+        onConfirm={(keptChildren) => {
+          if (onAddCluster) onAddCluster({ parent, children: keptChildren });
+          else onAdd(parent);
+          onClose();
+        }}
+        onJustParent={() => { onAdd(parent); onClose(); }}
+        onCancel={onClose}
+      />
+    );
+  }
 
   const isDark = theme === 'A';
 
   const submit = async () => {
     const trimmed = text.trim();
     if (!trimmed) return;
+
+    // DEV-only shortcut to preview the constellation reveal without an API key.
+    if (import.meta.env.DEV && /^demo$/i.test(trimmed)) {
+      setClusterPending(DEMO_CLUSTER);
+      return;
+    }
 
     if (!isLlmEnabled()) {
       const meta = parseLocal(trimmed);
@@ -131,6 +170,13 @@ export function AddSheet({ open, onClose, onAdd, personality, profile, theme }) 
       if (result.needs_followup && result.followups.length > 0) {
         setAnalysis(result);
         setLoading(false);
+      } else if (result.cluster?.propose && result.cluster.children?.length >= 2) {
+        setLoading(false);
+        setClusterPending({
+          parent: { icon: result.icon, tag: result.tag, title: result.title, body: result.body, time: result.time, when: result.when },
+          why: result.cluster.why,
+          children: result.cluster.children,
+        });
       } else {
         onAdd({ icon: result.icon, tag: result.tag, title: result.title, body: result.body, time: result.time, when: result.when });
         onClose();
@@ -161,6 +207,15 @@ export function AddSheet({ open, onClose, onAdd, personality, profile, theme }) 
     setLoading(true);
     try {
       const result = await analyzeReminder({ text: merged, lang, personality, profile });
+      if (result.cluster?.propose && result.cluster.children?.length >= 2) {
+        setLoading(false);
+        setClusterPending({
+          parent: { icon: result.icon, tag: result.tag, title: result.title, body: result.body, time: result.time, when: result.when },
+          why: result.cluster.why,
+          children: result.cluster.children,
+        });
+        return;
+      }
       onAdd({ icon: result.icon, tag: result.tag, title: result.title, body: result.body, time: result.time, when: result.when });
       onClose();
     } catch (e) {

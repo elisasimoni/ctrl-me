@@ -7,6 +7,8 @@ import {
   TOKENS, toggleInArray,
   TextInput, Choice, MultiChoice, MultiPills, HourPicker, Toggles,
 } from './ProfileInputs.jsx';
+import { ConstellationGraph } from './ConstellationGraph.jsx';
+import { listClusters } from '../lib/clusters.js';
 
 const DAYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
 const AREAS = ['study', 'health', 'social', 'work', 'home', 'habits'];
@@ -14,8 +16,10 @@ const AREAS = ['study', 'health', 'social', 'work', 'home', 'habits'];
 export function Settings({ open, onClose, store }) {
   const { t, lang, setLang } = useT();
   const [, forceRender] = useState(0);
+  const [graphOpen, setGraphOpen] = useState(false);
   if (!open) return null;
   const { state, setPref, setProfile, reset, resetOnboarding, clearReminders } = store;
+  const clusterCount = listClusters(state.reminders).length;
   const dir = state.prefs.direction;
   const tok = TOKENS[dir];
   const isDark = dir === 'A';
@@ -62,6 +66,22 @@ export function Settings({ open, onClose, store }) {
 
         {/* Hero: Pebble + greeting */}
         <Hero tok={tok} name={profile.name} t={t} />
+
+        {/* Constellation graph entry — only when there are clusters */}
+        {clusterCount > 0 && (
+          <button onClick={() => setGraphOpen(true)} style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            width: '100%', marginBottom: 24,
+            padding: '14px 18px', borderRadius: 16,
+            background: tok.ink, color: tok.bg,
+            border: 'none', cursor: 'pointer',
+            fontFamily: tok.fontBody, fontSize: 14, fontWeight: 600,
+            letterSpacing: '-0.005em', textAlign: 'left',
+          }}>
+            <span>✦ {t('graph.openButton')}</span>
+            <span style={{ opacity: 0.7, fontSize: 12 }}>{clusterCount}</span>
+          </button>
+        )}
 
         {/* Profile */}
         <Section tok={tok} label={t('settings.section.profile')}>
@@ -214,6 +234,13 @@ export function Settings({ open, onClose, store }) {
             )}
           </Section>
         )}
+
+        <ConstellationGraph
+          open={graphOpen}
+          onClose={() => setGraphOpen(false)}
+          reminders={state.reminders}
+          theme={dir}
+        />
 
         {/* Danger zone */}
         <Section tok={tok} label={t('settings.section.danger')}>

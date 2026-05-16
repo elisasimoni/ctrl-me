@@ -142,6 +142,20 @@ const dict = {
 
     'home.helloName': 'Hi, {name},',
 
+    // constellation flow
+    'constellation.title': 'A constellation around it?',
+    'constellation.sub': 'Tap to keep or drop. Add what fits.',
+    'constellation.confirm': 'Add {n} thing{s}',
+    'constellation.justOne': 'Just the main one',
+    'constellation.cancel': 'Discard everything',
+    'constellation.kept': 'kept',
+    'constellation.dropped': 'dropped',
+    'constellation.linked': '+{n} linked',
+    'constellation.parentBadge': 'CONSTELLATION',
+    'graph.title': 'Your constellations',
+    'graph.empty': 'No constellations yet. Add an event and I\'ll propose one.',
+    'graph.openButton': 'See constellations',
+
     // add sheet
     'add.title.a': '$ remind me to',
     'add.title.b': 'New thing to remember',
@@ -382,6 +396,19 @@ const dict = {
     'settings.profile.preview.sub': 'Cambia quello che vuoi qui sotto — aggiorno al volo.',
 
     'home.helloName': 'Ehi, {name},',
+
+    'constellation.title': 'Ti preparo una costellazione?',
+    'constellation.sub': 'Tocca per tenere o scartare. Aggiungi solo quello che ti torna.',
+    'constellation.confirm': 'Aggiungi {n} cos{a}',
+    'constellation.justOne': 'Solo quella principale',
+    'constellation.cancel': 'Lascia perdere tutto',
+    'constellation.kept': 'tenuto',
+    'constellation.dropped': 'scartato',
+    'constellation.linked': '+{n} collegat{a}',
+    'constellation.parentBadge': 'COSTELLAZIONE',
+    'graph.title': 'Le tue costellazioni',
+    'graph.empty': 'Ancora nessuna. Aggiungi un evento e te ne propongo una.',
+    'graph.openButton': 'Vedi costellazioni',
 
     'add.title.a': '$ ricordami di',
     'add.title.b': 'Cosa non vuoi scordare',

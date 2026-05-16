@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Icon, Pebble } from '../atoms.jsx';
 import { useT, formatDate } from '../i18n.jsx';
+import { groupReminders } from '../lib/clusters.js';
 import { WeatherBanner } from '../components/WeatherBanner.jsx';
 import { openMaps } from '../native/maps.js';
 import { addToCalendar } from '../native/calendar.js';
@@ -21,6 +22,7 @@ function PaperGrain() {
     }} />
   );
 }
+
 
 // Render a headline with optional italic span + line breaks.
 function richHeadline(text, italic) {
@@ -259,11 +261,18 @@ export function B_Home({ store, onCompose, onSettings, onAddReminder }) {
       <WeatherBanner theme="B" onAddReminder={onAddReminder} />
 
       <div className="cm-feed" style={{ position: 'absolute', top: 268, left: 0, right: 0, bottom: 110, overflow: 'auto', padding: '4px 16px 8px' }}>
-        {items.map(item => {
+        {groupReminders(items).map(item => {
           const isDone = item.done;
           const dx = drag.id === item.id ? drag.dx : 0;
+          const isChild = item._isChild;
+          const linkedCount = item._linked || 0;
           return (
-            <div key={item.id} style={{ position: 'relative', marginBottom: 10 }}>
+            <div key={item.id} style={{
+              position: 'relative',
+              marginBottom: isChild ? 6 : 10,
+              marginLeft: isChild ? 18 : 0,
+              marginTop: isChild ? -4 : 0,
+            }}>
               <div style={{
                 position: 'absolute', inset: 0, borderRadius: 22,
                 background: INK, color: PAPER,
@@ -300,12 +309,20 @@ export function B_Home({ store, onCompose, onSettings, onAddReminder }) {
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
                     <Icon name={item.icon} size={14} stroke={isDone ? DIM : INK_SOFT} />
                     <div className="tight" style={{
-                      fontSize: 16, fontWeight: 700, letterSpacing: '-0.025em',
+                      fontSize: isChild ? 14.5 : 16, fontWeight: 700, letterSpacing: '-0.025em',
                       color: isDone ? DIM : INK, lineHeight: 1.15,
                       textDecoration: isDone ? 'line-through' : 'none', textDecorationThickness: 1,
                       flex: 1, minWidth: 0,
                       overflow: 'hidden', textOverflow: 'ellipsis',
                     }}>{item.title}</div>
+                    {linkedCount > 0 && (
+                      <span className="tight" style={{
+                        flexShrink: 0,
+                        padding: '2px 8px', borderRadius: 100,
+                        background: INK, color: PAPER,
+                        fontSize: 10.5, fontWeight: 700, letterSpacing: '0.02em',
+                      }}>+{linkedCount}</span>
+                    )}
                   </div>
                   <div className="tight" style={{
                     fontSize: 13, color: isDone ? DIM : INK_SOFT, lineHeight: 1.4, letterSpacing: '-0.005em',
