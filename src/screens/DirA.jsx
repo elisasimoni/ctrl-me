@@ -3,6 +3,7 @@ import { Icon, APill, ADotGrid } from '../atoms.jsx';
 import { useT, formatDate } from '../i18n.jsx';
 import { groupReminders } from '../lib/clusters.js';
 import { frequentlySkipped } from '../lib/behavior.js';
+import { PebbleHint } from '../components/PebbleHint.jsx';
 
 const BG = '#0a0a0a';
 const INK = '#f5f5f2';
@@ -168,6 +169,7 @@ export function A_Home({ store, onCompose, onSettings, onProfile }) {
     <div className="cm-screen" style={{ background: BG, color: INK, overflow: 'hidden' }}
       onPointerMove={onMove} onPointerUp={onUp} onPointerLeave={onUp}>
       <ADotGrid opacity={0.04} />
+      <PebbleHint theme="A" />
 
       <div style={{ position: 'absolute', top: 64, left: 22, right: 22 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>

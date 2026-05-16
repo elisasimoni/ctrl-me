@@ -3,6 +3,7 @@ import { Icon, Pebble } from '../atoms.jsx';
 import { useT, formatDate } from '../i18n.jsx';
 import { groupReminders } from '../lib/clusters.js';
 import { frequentlySkipped } from '../lib/behavior.js';
+import { PebbleHint } from '../components/PebbleHint.jsx';
 import { WeatherBanner } from '../components/WeatherBanner.jsx';
 import { openMaps } from '../native/maps.js';
 import { addToCalendar } from '../native/calendar.js';
@@ -228,6 +229,7 @@ export function B_Home({ store, onCompose, onSettings, onProfile, onAddReminder 
     <div className="cm-screen" style={{ background: PAPER, color: INK, overflow: 'hidden' }}
       onPointerMove={onMove} onPointerUp={onUp} onPointerLeave={onUp}>
       <PaperGrain />
+      <PebbleHint theme="B" />
 
       <div style={{ position: 'absolute', top: 64, left: 24, right: 24 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
@@ -235,7 +237,7 @@ export function B_Home({ store, onCompose, onSettings, onProfile, onAddReminder 
             background: 'transparent', border: 'none', padding: 0, cursor: 'pointer',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
           }}>
-            <Pebble size={36} />
+            <Pebble size={36} live />
           </button>
           <div style={{ flex: 1 }}>
             <div className="tight" style={{ fontSize: 12, fontWeight: 600, color: DIM, letterSpacing: '0.04em', textTransform: 'uppercase' }}>

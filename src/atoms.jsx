@@ -1,5 +1,7 @@
 // Shared atoms: logo, icons, pebble mascot, pills.
 
+import { useEffect, useState } from 'react';
+
 export function CtrlMark({ size = 18, color = 'currentColor', mono = true }) {
   return (
     <span style={{
@@ -75,7 +77,28 @@ export function APill({ children, dark = true, accent = false }) {
   );
 }
 
-export function Pebble({ size = 56, eyes = 'open' }) {
+export function Pebble({ size = 56, eyes = 'open', live = false }) {
+  const [blinking, setBlinking] = useState(false);
+  useEffect(() => {
+    if (!live) return;
+    let cancelled = false;
+    const tick = () => {
+      if (cancelled) return;
+      setBlinking(true);
+      setTimeout(() => !cancelled && setBlinking(false), 180);
+    };
+    // Random delay 5–9s between blinks so it doesn't feel mechanical.
+    const schedule = () => {
+      const delay = 5000 + Math.random() * 4000;
+      return setTimeout(() => { tick(); next(); }, delay);
+    };
+    let handle;
+    const next = () => { handle = schedule(); };
+    next();
+    return () => { cancelled = true; clearTimeout(handle); };
+  }, [live]);
+
+  const renderEyes = blinking ? 'closed' : eyes;
   const eyeY = 0.46;
   const eyeOffset = 0.18;
   const PAPER = '#f4f1ec';
@@ -87,7 +110,7 @@ export function Pebble({ size = 56, eyes = 'open' }) {
       boxShadow: 'inset -3px -4px 0 rgba(255,255,255,0.06)',
       flexShrink: 0,
     }}>
-      {eyes === 'open' && (
+      {renderEyes === 'open' && (
         <>
           <div style={{
             position: 'absolute', width: size * 0.1, height: size * 0.16,
@@ -101,7 +124,7 @@ export function Pebble({ size = 56, eyes = 'open' }) {
           }} />
         </>
       )}
-      {eyes === 'closed' && (
+      {renderEyes === 'closed' && (
         <>
           <div style={{
             position: 'absolute', width: size * 0.14, height: 2,
