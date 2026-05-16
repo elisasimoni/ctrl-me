@@ -31,6 +31,29 @@ const DEFAULT_PREFS = {
 
 export { DEFAULT_PROFILE };
 
+// Replace a HH:MM time appearance inside a title with a new time.
+// Handles both zero-padded ("08:00") and natural ("8:00") forms.
+// Returns the original title unchanged if no time-shape is found.
+function rewriteTimeInTitle(title, oldTime, newTime) {
+  if (!oldTime || !newTime) return title;
+  const [oh, om] = oldTime.split(':');
+  const [nh, nm] = newTime.split(':');
+  if (!oh || !nh) return title;
+  const candidates = [
+    `${oh}:${om}`,                       // 08:00
+    `${parseInt(oh, 10)}:${om}`,         // 8:00
+  ];
+  for (const cand of candidates) {
+    if (title.includes(cand)) {
+      // Match the same shape user/Haiku used — strip the leading zero if the
+      // matched candidate didn't have one.
+      const replacement = cand.startsWith('0') ? `${nh}:${nm}` : `${parseInt(nh, 10)}:${nm}`;
+      return title.replace(cand, replacement);
+    }
+  }
+  return title;
+}
+
 function buildReminder(partial) {
   return {
     id: partial.id ?? Date.now(),
@@ -132,8 +155,11 @@ export function useStore(/* t, lang kept for signature compat */) {
     });
   }, []);
 
-  // Atomically add a parent reminder + its children, linked by clusterId.
-  const addCluster = useCallback(({ parent, children }) => {
+  // Atomically add a parent reminder + its kept children. Also records
+  // a cluster_decision event capturing which child tags were kept vs
+  // dropped from the LLM's original proposal, so future similar
+  // constellations can be biased toward what the user actually wants.
+  const addCluster = useCallback(({ parent, children, droppedChildren = [] }) => {
     setState(s => {
       const clusterId = `c_${Date.now()}`;
       const parentR = buildReminder({ ...parent, clusterId, kind: 'parent' });
@@ -144,10 +170,18 @@ export function useStore(/* t, lang kept for signature compat */) {
         kind: 'child',
         id: parentR.id + 1 + i,
       }));
-      const log = appendEvent(s.behaviorLog, {
+      let log = appendEvent(s.behaviorLog, {
         type: 'cluster_created',
         title: parentR.title, tag: parentR.tag, icon: parentR.icon, when: parentR.when,
         childrenCount: childR.length,
+        at: Date.now(),
+      });
+      log = appendEvent(log, {
+        type: 'cluster_decision',
+        parentTitle: parentR.title,
+        parentTag: parentR.tag,
+        kept: (children ?? []).map(c => c.tag),
+        dropped: (droppedChildren ?? []).map(c => c.tag),
         at: Date.now(),
       });
       return { ...s, reminders: [...s.reminders, parentR, ...childR], behaviorLog: log };
@@ -156,11 +190,17 @@ export function useStore(/* t, lang kept for signature compat */) {
 
   // Patch an existing reminder (e.g. reschedule it to a new time/when).
   // Logs a 'rescheduled' event so behavior aggregation can learn from it.
+  // When the time changes, also rewrites any time mention inside the
+  // title so it doesn't go stale (e.g. "Pillola alle 8:00." → "13:00.").
   const updateReminder = useCallback((id, patch) => {
     setState(s => {
       const r = s.reminders.find(x => x.id === id);
       if (!r) return s;
       const updated = { ...r, ...patch };
+      if (patch.time && r.time && patch.time !== r.time && r.title) {
+        const rewritten = rewriteTimeInTitle(r.title, r.time, patch.time);
+        if (rewritten !== r.title) updated.title = rewritten;
+      }
       return {
         ...s,
         reminders: s.reminders.map(x => x.id === id ? updated : x),

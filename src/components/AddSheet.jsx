@@ -129,8 +129,8 @@ export function AddSheet({ open, onClose, onAdd, onAddCluster, personality, prof
         parent={parent}
         why={why}
         children={children}
-        onConfirm={(keptChildren) => {
-          if (onAddCluster) onAddCluster({ parent, children: keptChildren });
+        onConfirm={(keptChildren, droppedChildren) => {
+          if (onAddCluster) onAddCluster({ parent, children: keptChildren, droppedChildren });
           else onAdd(parent);
           onClose();
         }}

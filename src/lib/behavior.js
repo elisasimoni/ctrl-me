@@ -66,6 +66,25 @@ export function behaviorStats(log, { windowMs = WEEK } = {}) {
   return { skipped, completionRate, peakWhen, hasAnything: skipped.length > 0 || completionRate != null || peakWhen };
 }
 
+// Titles the user keeps dismissing without ever completing them in
+// the last 14 days. ≥5 snoozes and 0 'done' → archive candidate. The
+// LLM gets a soft prompt; the user is never forcibly archived.
+export function archiveCandidates(log, { windowMs = 14 * 24 * 60 * 60 * 1000, threshold = 5 } = {}) {
+  if (!log?.length) return [];
+  const cutoff = Date.now() - windowMs;
+  const counts = {};
+  log.forEach(e => {
+    if (e.at < cutoff) return;
+    if (e.type !== 'snooze' && e.type !== 'done') return;
+    if (!counts[e.title]) counts[e.title] = { snooze: 0, done: 0 };
+    counts[e.title][e.type] += 1;
+  });
+  return Object.entries(counts)
+    .filter(([, c]) => c.snooze >= threshold && c.done === 0)
+    .map(([title, c]) => ({ title, snoozeCount: c.snooze }))
+    .sort((a, b) => b.snoozeCount - a.snoozeCount);
+}
+
 // Silent streak: count of consecutive 'done' events starting from the
 // most recent log entry. 'snooze' or 'undone' break the streak. Other
 // event types ('created', 'rescheduled', 'cluster_created') are skipped
@@ -81,6 +100,66 @@ export function currentStreak(log) {
     // skip 'created', 'rescheduled', 'cluster_created'
   }
   return n;
+}
+
+// Aggregate past cluster decisions by parent tag prefix so Haiku can
+// bias future cluster proposals. For each parent prefix (e.g. "ESAME"
+// from "ESAME · ANALISI"), count how often each child tag was kept vs
+// dropped across decisions. Returns map keyed by prefix:
+//   { ESAME: [{ tag: 'RIPASSO', kept: 3, dropped: 0 }, ...] }
+// Only prefixes with ≥2 past clusters are returned.
+export function clusterDecisionHabits(log) {
+  if (!log?.length) return {};
+  const byPrefix = {};
+  log.filter(e => e.type === 'cluster_decision').forEach(e => {
+    const prefix = (e.parentTag || '').split(' · ')[0].trim();
+    if (!prefix) return;
+    if (!byPrefix[prefix]) byPrefix[prefix] = { count: 0, tags: {} };
+    byPrefix[prefix].count += 1;
+    (e.kept || []).forEach(tag => {
+      const t = byPrefix[prefix].tags[tag] = byPrefix[prefix].tags[tag] || { kept: 0, dropped: 0 };
+      t.kept += 1;
+    });
+    (e.dropped || []).forEach(tag => {
+      const t = byPrefix[prefix].tags[tag] = byPrefix[prefix].tags[tag] || { kept: 0, dropped: 0 };
+      t.dropped += 1;
+    });
+  });
+  const out = {};
+  for (const [prefix, data] of Object.entries(byPrefix)) {
+    if (data.count < 2) continue;
+    out[prefix] = Object.entries(data.tags)
+      .map(([tag, c]) => ({ tag, kept: c.kept, dropped: c.dropped }))
+      .sort((a, b) => (b.kept - b.dropped) - (a.kept - a.dropped));
+  }
+  return out;
+}
+
+// Detect titles the user has completed enough times for a recurring
+// shape to emerge. Looks at the last 14 days of 'done' events. Returns
+// [{title, shape, count}] where shape ∈ 'daily' | 'weekday' | 'weekend'.
+// Thresholds: ≥5 completions for daily, ≥3 weekday-only completions
+// without weekend completions for weekday, ≥2 weekend-only for weekend.
+export function recurringHabits(log, { windowMs = 14 * 24 * 60 * 60 * 1000 } = {}) {
+  if (!log?.length) return [];
+  const cutoff = Date.now() - windowMs;
+  const byTitle = {};
+  log.filter(e => e.type === 'done' && e.at >= cutoff).forEach(e => {
+    if (!byTitle[e.title]) byTitle[e.title] = { weekday: 0, weekend: 0, total: 0, days: new Set() };
+    const dow = new Date(e.at).getDay(); // 0=Sun, 6=Sat
+    if (dow === 0 || dow === 6) byTitle[e.title].weekend += 1;
+    else byTitle[e.title].weekday += 1;
+    byTitle[e.title].total += 1;
+    byTitle[e.title].days.add(new Date(e.at).toDateString());
+  });
+  const out = [];
+  for (const [title, c] of Object.entries(byTitle)) {
+    const distinctDays = c.days.size;
+    if (distinctDays >= 5) out.push({ title, shape: 'daily', count: c.total });
+    else if (c.weekday >= 3 && c.weekend === 0) out.push({ title, shape: 'weekday', count: c.weekday });
+    else if (c.weekend >= 2 && c.weekday === 0) out.push({ title, shape: 'weekend', count: c.weekend });
+  }
+  return out.sort((a, b) => b.count - a.count);
 }
 
 // Per-title reschedule habits over a wide window (4 weeks). Returns
@@ -146,6 +225,31 @@ export function behaviorSummary(log) {
   habits.forEach(h => {
     bits.push(`usually moves "${h.title}" to ${h.when}`);
   });
+
+  // Recurring habits — daily / weekday / weekend
+  const recurring = recurringHabits(log).slice(0, 2);
+  recurring.forEach(r => {
+    bits.push(`"${r.title}" is a ${r.shape} habit`);
+  });
+
+  // Archive candidates — repeatedly skipped, never completed
+  const stale = archiveCandidates(log).slice(0, 1);
+  stale.forEach(s => {
+    bits.push(`"${s.title}" skipped ${s.snoozeCount}× with 0 completions — archive candidate`);
+  });
+
+  // Cluster decision habits — what user keeps vs drops per cluster type
+  const decisions = clusterDecisionHabits(log);
+  for (const [prefix, tags] of Object.entries(decisions)) {
+    const kept = tags.filter(t => t.kept > t.dropped).map(t => t.tag).slice(0, 3);
+    const dropped = tags.filter(t => t.dropped > t.kept).map(t => t.tag).slice(0, 3);
+    if (kept.length || dropped.length) {
+      const parts = [];
+      if (kept.length) parts.push(`keep ${kept.join('/')}`);
+      if (dropped.length) parts.push(`drop ${dropped.join('/')}`);
+      bits.push(`past ${prefix} clusters: ${parts.join(', ')}`);
+    }
+  }
 
   return bits.length ? `Behavior: ${bits.join('; ')}.` : '';
 }

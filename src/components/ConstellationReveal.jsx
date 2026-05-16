@@ -45,8 +45,9 @@ export function ConstellationReveal({
     : (totalToAdd === 1 ? '' : 's');
 
   const handleConfirm = () => {
-    const keptChildren = children.filter((_, i) => keep[i]);
-    onConfirm(keptChildren);
+    const keptChildren    = children.filter((_, i) => keep[i]);
+    const droppedChildren = children.filter((_, i) => !keep[i]);
+    onConfirm(keptChildren, droppedChildren);
   };
 
   return (
