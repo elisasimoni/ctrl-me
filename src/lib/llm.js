@@ -46,6 +46,14 @@ FIELDS:
   new_facts   → recurring facts worth remembering (max 3, empty array if none)
   needs_followup → true only if critical info is missing
   followups   → 1-2 short questions if needs_followup, else []
+  cluster     → object { propose: bool, why: string, children: [{title, body, when, icon, tag, time}] } — see CLUSTER rules
+
+CLUSTER rules — when to propose a constellation:
+- ONLY for events with prep/aftermath: exam, interview, trip, appointment, presentation, doctor visit, big deadline, party, date.
+- NOT for simple actions (pillola, ombrello, chiamata) — set cluster.propose=false.
+- When proposing, return 2–4 children that prepare or follow up the parent. Same lang as body. Children have own icon+tag+time+when.
+- "why" = one short sentence in user's lang explaining the constellation idea.
+- Children titles ≤5 words. Same tone rules as parent.
 
 ICONS: rain=weather/umbrella, pill=meds/vitamins, pin=place/address, wallet=money/budget, moon=sleep, spark=other
 
@@ -58,22 +66,53 @@ BODY tone by personality:
 EXAMPLES (study these carefully):
 
 Input: {"text":"ricordami pillola tutti i giorni alle 8","lang":"it","personality":"buddy"}
-Output: {"icon":"pill","tag":"PILLOLA · OGNI GIORNO","title":"Pillola alle 8:00.","body":"Ci penso io, ogni mattina alle 8.","time":"08:00","when":"morning","new_facts":["prende la pillola ogni giorno alle 8:00"],"needs_followup":false,"followups":[]}
+Output: {"icon":"pill","tag":"PILLOLA · OGNI GIORNO","title":"Pillola alle 8:00.","body":"Ci penso io, ogni mattina alle 8.","time":"08:00","when":"morning","new_facts":["prende la pillola ogni giorno alle 8:00"],"needs_followup":false,"followups":[],"cluster":{"propose":false,"why":"","children":[]}}
 
 Input: {"text":"remember i take tiroid pill every morning 15 min before breakfast i usually get up at 8:50 so remember me at 9","lang":"en","personality":"buddy"}
-Output: {"icon":"pill","tag":"PILL · DAILY","title":"Thyroid pill at 9:00.","body":"Every morning at 9. I've got it.","time":"09:00","when":"morning","new_facts":["takes thyroid pill at 9:00 daily","wakes up at 8:50"],"needs_followup":false,"followups":[]}
+Output: {"icon":"pill","tag":"PILL · DAILY","title":"Thyroid pill at 9:00.","body":"Every morning at 9. I've got it.","time":"09:00","when":"morning","new_facts":["takes thyroid pill at 9:00 daily","wakes up at 8:50"],"needs_followup":false,"followups":[],"cluster":{"propose":false,"why":"","children":[]}}
 
 Input: {"text":"ho un esame domani","lang":"it","personality":"buddy"}
-Output: {"icon":"pin","tag":"ESAME","title":"Esame domani.","body":"Ok, occhio. Dove e a che ora?","time":null,"when":"later","new_facts":[],"needs_followup":true,"followups":["Che ora?","In che aula?"]}
+Output: {"icon":"pin","tag":"ESAME","title":"Esame domani.","body":"Ok, occhio. Dove e a che ora?","time":null,"when":"later","new_facts":[],"needs_followup":true,"followups":["Che ora?","In che aula?"],"cluster":{"propose":false,"why":"","children":[]}}
+
+Input: {"text":"esame di analisi martedì alle 10","lang":"it","personality":"buddy"}
+Output: {"icon":"pin","tag":"ESAME · ANALISI","title":"Analisi martedì 10:00.","body":"Ti preparo la costellazione intorno?","time":"10:00","when":"morning","new_facts":["esame di analisi martedì alle 10:00"],"needs_followup":false,"followups":[],"cluster":{"propose":true,"why":"Aggancio sonno + ripasso + caffè per arrivarci lucida.","children":[{"title":"Ripasso domenica sera.","body":"Ultima passata, niente tutta la notte.","icon":"spark","tag":"RIPASSO","time":"20:00","when":"evening"},{"title":"Nanna entro le 23.","body":"Cervello fresco vale 10 punti.","icon":"moon","tag":"SONNO","time":"23:00","when":"evening"},{"title":"Sveglia alle 7:30.","body":"Tempo per colazione vera.","icon":"spark","tag":"SVEGLIA","time":"07:30","when":"morning"},{"title":"Caffè ma non troppo.","body":"Uno solo, tranqui.","icon":"spark","tag":"CAFFÈ","time":"08:30","when":"morning"}]}}
+
+Input: {"text":"job interview thursday 3pm","lang":"en","personality":"buddy"}
+Output: {"icon":"pin","tag":"INTERVIEW","title":"Interview Thursday 15:00.","body":"Want me to set up the prep around it?","time":"15:00","when":"afternoon","new_facts":["has a job interview thursday 15:00"],"needs_followup":false,"followups":[],"cluster":{"propose":true,"why":"Prep + outfit + travel — covers your back.","children":[{"title":"Re-read the CV.","body":"Skim, don't memorise.","icon":"spark","tag":"PREP","time":"21:00","when":"evening"},{"title":"Outfit out the night before.","body":"Future-you will thank you.","icon":"spark","tag":"OUTFIT","time":"22:00","when":"evening"},{"title":"Leave by 14:00.","body":"Buffer for the train.","icon":"pin","tag":"TRAVEL","time":"14:00","when":"afternoon"}]}}
 
 Input: {"text":"remind me to take the umbrella if it rains","lang":"en","personality":"chill"}
-Output: {"icon":"rain","tag":"WEATHER","title":"Umbrella if it rains.","body":"Noted. I'll check the sky.","time":null,"when":"later","new_facts":[],"needs_followup":false,"followups":[]}
+Output: {"icon":"rain","tag":"WEATHER","title":"Umbrella if it rains.","body":"Noted. I'll check the sky.","time":null,"when":"later","new_facts":[],"needs_followup":false,"followups":[],"cluster":{"propose":false,"why":"","children":[]}}
 
 Input: {"text":"budget takeout 50 euro a settimana","lang":"it","personality":"hype"}
-Output: {"icon":"wallet","tag":"BUDGET","title":"Takeout: 50€ a settimana.","body":"MODALITÀ BUDGET ON. Dai!","time":null,"when":"later","new_facts":["budget takeout €50 a settimana"],"needs_followup":false,"followups":[]}
+Output: {"icon":"wallet","tag":"BUDGET","title":"Takeout: 50€ a settimana.","body":"MODALITÀ BUDGET ON. Dai!","time":null,"when":"later","new_facts":["budget takeout €50 a settimana"],"needs_followup":false,"followups":[],"cluster":{"propose":false,"why":"","children":[]}}
 
 Input: {"text":"sleep by 11pm","lang":"en","personality":"chill"}
 Output: {"icon":"moon","tag":"NIGHT","title":"Bedtime at 23:00.","body":"Noted. Early to bed.","time":"23:00","when":"evening","new_facts":["goes to bed by 23:00"],"needs_followup":false,"followups":[]}`;
+
+const CHILD_SCHEMA = {
+  type: 'object',
+  properties: {
+    title: { type: 'string' },
+    body:  { type: 'string' },
+    icon:  { type: 'string', enum: ['rain','pill','pin','wallet','spark','moon'] },
+    tag:   { type: 'string' },
+    time:  { type: ['string','null'] },
+    when:  { type: 'string', enum: ['morning','noon','afternoon','evening','later'] },
+  },
+  required: ['title','body','icon','tag','time','when'],
+  additionalProperties: false,
+};
+
+const CLUSTER_SCHEMA = {
+  type: 'object',
+  properties: {
+    propose:  { type: 'boolean' },
+    why:      { type: 'string' },
+    children: { type: 'array', items: CHILD_SCHEMA, maxItems: 4 },
+  },
+  required: ['propose','why','children'],
+  additionalProperties: false,
+};
 
 const SCHEMA = {
   type: 'object',
@@ -87,8 +126,9 @@ const SCHEMA = {
     new_facts:      { type: 'array', items: { type: 'string' } },
     needs_followup: { type: 'boolean' },
     followups:      { type: 'array', items: { type: 'string' } },
+    cluster:        CLUSTER_SCHEMA,
   },
-  required: ['icon','tag','title','body','time','when','new_facts','needs_followup','followups'],
+  required: ['icon','tag','title','body','time','when','new_facts','needs_followup','followups','cluster'],
   additionalProperties: false,
 };
 
@@ -102,7 +142,7 @@ export async function analyzeReminder({ text, lang, personality, profile }) {
 
   const response = await c.messages.create({
     model: MODEL,
-    max_tokens: 400,
+    max_tokens: 1000,
     system: [{ type: 'text', text: SYSTEM_PROMPT, cache_control: { type: 'ephemeral' } }],
     messages: [{ role: 'user', content: userContent }],
     output_config: { format: { type: 'json_schema', schema: SCHEMA } },
@@ -111,6 +151,9 @@ export async function analyzeReminder({ text, lang, personality, profile }) {
   const block = response.content.find(b => b.type === 'text');
   if (!block) throw new Error('No text in response');
   const result = JSON.parse(block.text);
+
+  // Backstop in case the model omits the cluster object entirely.
+  if (!result.cluster) result.cluster = { propose: false, why: '', children: [] };
 
   // Persist new facts for future calls
   (result.new_facts ?? []).forEach(f => addFact(f));

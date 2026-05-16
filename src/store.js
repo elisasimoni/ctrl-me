@@ -31,6 +31,22 @@ const DEFAULT_PREFS = {
 
 export { DEFAULT_PROFILE };
 
+function buildReminder(partial) {
+  return {
+    id: partial.id ?? Date.now(),
+    time: partial.time ?? null,
+    when: partial.when ?? 'later',
+    icon: partial.icon ?? 'spark',
+    tag: partial.tag ?? 'NOTE',
+    title: partial.title,
+    body: partial.body ?? '',
+    done: false,
+    clusterId: partial.clusterId ?? null,
+    parentId: partial.parentId ?? null,
+    kind: partial.kind ?? 'standalone', // 'standalone' | 'parent' | 'child'
+  };
+}
+
 function mergePrefs(saved) {
   const base = { ...DEFAULT_PREFS, ...(saved ?? {}) };
   base.profile = { ...DEFAULT_PROFILE, ...((saved && saved.profile) || {}) };
@@ -80,18 +96,26 @@ export function useStore(/* t, lang kept for signature compat */) {
       ...s,
       reminders: [
         ...s.reminders,
-        {
-          id: Date.now(),
-          time: partial.time ?? null,
-          when: partial.when ?? 'later',
-          icon: partial.icon ?? 'spark',
-          tag: partial.tag ?? 'NOTE',
-          title: partial.title,
-          body: partial.body ?? '',
-          done: false,
-        },
+        buildReminder(partial),
       ],
     }));
+  }, []);
+
+  // Atomically add a parent reminder + its children, linked by clusterId.
+  const addCluster = useCallback(({ parent, children }) => {
+    setState(s => {
+      const clusterId = `c_${Date.now()}`;
+      const parentR = buildReminder({ ...parent, clusterId, kind: 'parent' });
+      const childR = (children ?? []).map((c, i) => buildReminder({
+        ...c,
+        clusterId,
+        parentId: parentR.id,
+        kind: 'child',
+        // give children sequential ids so they're stable
+        id: parentR.id + 1 + i,
+      }));
+      return { ...s, reminders: [...s.reminders, parentR, ...childR] };
+    });
   }, []);
 
   const setPref = useCallback((key, value) => {
@@ -123,5 +147,5 @@ export function useStore(/* t, lang kept for signature compat */) {
     setState(s => ({ ...s, reminders: [] }));
   }, []);
 
-  return { state, toggleDone, snooze, addReminder, setPref, setProfile, reset, resetOnboarding, clearReminders };
+  return { state, toggleDone, snooze, addReminder, addCluster, setPref, setProfile, reset, resetOnboarding, clearReminders };
 }
