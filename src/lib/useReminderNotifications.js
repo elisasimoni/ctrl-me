@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import {
-  ensurePermission, scheduleReminder, cancelReminder,
-  nextFireForReminder, notifIdFor,
+  ensurePermission, scheduleNotification, cancelNotification,
+  nextFireForReminder, notifIdFor, applyQuietHours, isDailyReminder,
 } from '../native/notifications.js';
 
 // Keeps the OS notification queue in sync with `state.reminders`.
@@ -13,7 +13,7 @@ import {
 // Tracks scheduled state in a Map keyed by reminder.id with the
 // firingAt timestamp + title + body of the last scheduled version,
 // so re-scheduling only happens when something material changes.
-export function useReminderNotifications(reminders, enabled = true) {
+export function useReminderNotifications(reminders, enabled = true, profile = null) {
   const scheduledRef = useRef(new Map());
 
   useEffect(() => {
@@ -26,17 +26,28 @@ export function useReminderNotifications(reminders, enabled = true) {
       if (enabled) {
         for (const r of reminders ?? []) {
           if (r.done) continue;
-          const at = nextFireForReminder(r);
-          if (!at) continue;
-          wanted.set(r.id, { firingAt: at.getTime(), title: r.title, body: r.body });
+          const baseAt = nextFireForReminder(r);
+          if (!baseAt) continue;
+          // Push out of the user's sleep window if needed.
+          const at = applyQuietHours(
+            baseAt.getTime(),
+            profile?.wakeHour,
+            profile?.sleepHour,
+          );
+          wanted.set(r.id, {
+            firingAt: at,
+            title: r.title,
+            body: r.body,
+            repeats: isDailyReminder(r),
+          });
         }
       }
 
       // If nothing to schedule, just clean up any leftovers from prior state
       // — but don't trigger the permission prompt for nothing.
       if (wanted.size === 0) {
-        for (const [id] of scheduledRef.current) {
-          await cancelReminder({ id });
+        for (const [, prev] of scheduledRef.current) {
+          await cancelNotification(prev.notifId);
         }
         scheduledRef.current.clear();
         return;
@@ -51,31 +62,31 @@ export function useReminderNotifications(reminders, enabled = true) {
         const changed = !prev
           || prev.firingAt !== want.firingAt
           || prev.title !== want.title
-          || prev.body !== want.body;
+          || prev.body !== want.body
+          || prev.repeats !== want.repeats;
         if (changed) {
-          if (prev) await cancelReminder({ id });
-          await scheduleReminder({ id, time: extractTimeFromAt(want.firingAt), title: want.title, body: want.body });
-          scheduledRef.current.set(id, want);
+          const nid = notifIdFor(id);
+          if (prev) await cancelNotification(prev.notifId);
+          await scheduleNotification({
+            id: nid,
+            title: want.title || 'CTRL+Me',
+            body: want.body || '',
+            at: want.firingAt,
+            repeats: want.repeats,
+            extra: { reminderId: id },
+          });
+          scheduledRef.current.set(id, { ...want, notifId: nid });
         }
       }
 
       // Cancel anything we used to schedule but no longer want.
-      for (const [id] of scheduledRef.current) {
+      for (const [id, prev] of scheduledRef.current) {
         if (!wanted.has(id)) {
-          await cancelReminder({ id });
+          await cancelNotification(prev.notifId);
           scheduledRef.current.delete(id);
         }
       }
     })();
     return () => { cancelled = true; };
-  }, [reminders, enabled]);
-}
-
-// Helper: rebuild the HH:MM time string from a firing timestamp.
-// scheduleReminder() expects a reminder shape with .time + computes
-// nextFireForReminder internally — but since we've already computed
-// the firing moment we need to pass back a `time` that round-trips.
-function extractTimeFromAt(at) {
-  const d = new Date(at);
-  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+  }, [reminders, enabled, profile?.wakeHour, profile?.sleepHour]);
 }

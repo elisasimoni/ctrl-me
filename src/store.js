@@ -55,6 +55,34 @@ function rewriteTimeInTitle(title, oldTime, newTime) {
   return title;
 }
 
+// Advance an HH:MM by N minutes, wrapping past midnight. If time is
+// missing, default to "now + delta" — so snoozing an untimed reminder
+// still gets a real time it can fire at.
+function bumpTime(time, deltaMin) {
+  let h, m;
+  if (time && /^\d{1,2}:\d{2}$/.test(time)) {
+    [h, m] = time.split(':').map(Number);
+  } else {
+    const now = new Date();
+    h = now.getHours();
+    m = now.getMinutes();
+  }
+  const total = (h * 60 + m + deltaMin) % (24 * 60);
+  const newH = Math.floor(total / 60);
+  const newM = total % 60;
+  return `${String(newH).padStart(2, '0')}:${String(newM).padStart(2, '0')}`;
+}
+
+function deriveWhen(time) {
+  if (!time) return 'later';
+  const h = parseInt(time.split(':')[0], 10);
+  if (h >= 5 && h < 12) return 'morning';
+  if (h === 12) return 'noon';
+  if (h >= 13 && h < 18) return 'afternoon';
+  if (h >= 18 && h < 23) return 'evening';
+  return 'later';
+}
+
 function buildReminder(partial) {
   return {
     id: partial.id ?? Date.now(),
@@ -129,16 +157,25 @@ export function useStore(/* t, lang kept for signature compat */) {
     });
   }, []);
 
-  const snooze = useCallback((id) => {
+  // Snooze = "remind me later". Pushes the reminder's time forward by
+  // 10 minutes instead of deleting it, so the OS notification fires
+  // again after the delay. Still logs a 'snooze' event for the behavior
+  // aggregator (lots of snoozes = "spesso saltato" badge).
+  const snooze = useCallback((id, deltaMin = 10) => {
     setState(s => {
       const r = s.reminders.find(x => x.id === id);
-      const log = r
-        ? appendEvent(s.behaviorLog, {
-            type: 'snooze', title: r.title, tag: r.tag, icon: r.icon, when: r.when,
-            at: Date.now(),
-          })
-        : s.behaviorLog;
-      return { ...s, reminders: s.reminders.filter(x => x.id !== id), behaviorLog: log };
+      if (!r) return s;
+      const nextTime = bumpTime(r.time, deltaMin);
+      const nextWhen = deriveWhen(nextTime);
+      const updated = { ...r, time: nextTime, when: nextWhen };
+      return {
+        ...s,
+        reminders: s.reminders.map(x => x.id === id ? updated : x),
+        behaviorLog: appendEvent(s.behaviorLog, {
+          type: 'snooze', title: r.title, tag: r.tag, icon: r.icon, when: r.when,
+          at: Date.now(),
+        }),
+      };
     });
   }, []);
 

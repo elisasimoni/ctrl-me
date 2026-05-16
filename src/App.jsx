@@ -9,12 +9,13 @@ import { ThemeChooser } from './components/ThemeChooser.jsx';
 import { OnboardingQuestionnaire } from './components/OnboardingQuestionnaire.jsx';
 import { behaviorSummary } from './lib/behavior.js';
 import { useReminderNotifications } from './lib/useReminderNotifications.js';
+import { registerNotificationActions } from './native/notifications.js';
 import { useT } from './i18n.jsx';
 
 export default function App() {
   const { t, lang } = useT();
   const store = useStore();
-  const { state, addReminder, addCluster, setPref, setProfile } = store;
+  const { state, addReminder, addCluster, setPref, setProfile, toggleDone, snooze } = store;
   const standalone = useIsStandalone();
 
   const deriveView = (prefs) => {
@@ -40,7 +41,32 @@ export default function App() {
   const fullscreen = standalone || isMobile;
 
   // Keep OS notifications in sync with the reminder list.
-  useReminderNotifications(state.reminders, state.prefs.profile.permNotifications);
+  useReminderNotifications(
+    state.reminders,
+    state.prefs.profile.permNotifications,
+    state.prefs.profile,
+  );
+
+  // Register lock-screen quick action buttons. Re-runs when language
+  // changes so the action titles stay localized.
+  useEffect(() => {
+    registerNotificationActions({
+      doneLabel: t('notif.action.done'),
+      snoozeLabel: t('notif.action.snooze'),
+    });
+  }, [lang, t]);
+
+  // Bridge: lock-screen action → store action.
+  useEffect(() => {
+    const handler = (e) => {
+      const { actionId, reminderId } = e.detail || {};
+      if (!reminderId) return;
+      if (actionId === 'done') toggleDone(reminderId);
+      else if (actionId === 'snooze') snooze(reminderId);
+    };
+    window.addEventListener('ctrlme.notif.action', handler);
+    return () => window.removeEventListener('ctrlme.notif.action', handler);
+  }, [toggleDone, snooze]);
 
   useEffect(() => {
     if (view !== 'home') return;

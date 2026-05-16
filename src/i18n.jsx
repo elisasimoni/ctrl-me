@@ -276,6 +276,8 @@ const dict = {
     'q.11.location': 'Location',
     'q.11.calendar': 'Calendar',
     'q.11.notifications': 'Push notifications',
+    'notif.action.done': 'Done',
+    'notif.action.snooze': 'Later',
 
     // misc
     'desktop.tagline': 'CTRL+Me — Vite + PWA prototype',
@@ -545,6 +547,8 @@ const dict = {
     'q.11.location': 'Posizione',
     'q.11.calendar': 'Calendario',
     'q.11.notifications': 'Notifiche push',
+    'notif.action.done': 'Fatto',
+    'notif.action.snooze': 'Dopo',
 
     'desktop.tagline': 'CTRL+Me — prototipo Vite + PWA',
     'desktop.previewNudge': 'anteprima della spinta →',
