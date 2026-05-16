@@ -275,6 +275,7 @@ const dict = {
     'q.11.weather': 'Weather',
     'q.11.location': 'Location',
     'q.11.calendar': 'Calendar',
+    'q.11.notifications': 'Push notifications',
 
     // misc
     'desktop.tagline': 'CTRL+Me — Vite + PWA prototype',
@@ -543,6 +544,7 @@ const dict = {
     'q.11.weather': 'Meteo',
     'q.11.location': 'Posizione',
     'q.11.calendar': 'Calendario',
+    'q.11.notifications': 'Notifiche push',
 
     'desktop.tagline': 'CTRL+Me — prototipo Vite + PWA',
     'desktop.previewNudge': 'anteprima della spinta →',

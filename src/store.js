@@ -17,6 +17,7 @@ const DEFAULT_PROFILE = {
   permWeather: false,
   permLocation: false,
   permCalendar: false,
+  permNotifications: true,    // user-controlled mute switch (OS permission is separate)
   completedAt: null,
 };
 

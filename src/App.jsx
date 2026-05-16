@@ -8,6 +8,7 @@ import { Settings } from './components/Settings.jsx';
 import { ThemeChooser } from './components/ThemeChooser.jsx';
 import { OnboardingQuestionnaire } from './components/OnboardingQuestionnaire.jsx';
 import { behaviorSummary } from './lib/behavior.js';
+import { useReminderNotifications } from './lib/useReminderNotifications.js';
 import { useT } from './i18n.jsx';
 
 export default function App() {
@@ -37,6 +38,9 @@ export default function App() {
   const dir = state.prefs.direction;
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 700;
   const fullscreen = standalone || isMobile;
+
+  // Keep OS notifications in sync with the reminder list.
+  useReminderNotifications(state.reminders, state.prefs.profile.permNotifications);
 
   useEffect(() => {
     if (view !== 'home') return;

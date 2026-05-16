@@ -213,6 +213,7 @@ export function Settings({ open, mode = 'profile', onClose, store }) {
         <Section tok={tok} label={t('settings.section.ambient')}>
           <Toggles tok={tok}
             items={[
+              { key: 'permNotifications', label: t('q.11.notifications'), value: profile.permNotifications },
               { key: 'permWeather',  label: t('q.11.weather'),  value: profile.permWeather },
               { key: 'permLocation', label: t('q.11.location'), value: profile.permLocation },
               { key: 'permCalendar', label: t('q.11.calendar'), value: profile.permCalendar },
