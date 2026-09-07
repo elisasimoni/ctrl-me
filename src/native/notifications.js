@@ -62,7 +62,7 @@ export function nextFireForReminder(reminder, now = new Date()) {
   if (daily && (!reminder.date || reminder.date < localDate(now)))
     at = new Date(now);
   at.setHours(hh, mm, 0, 0);
-  if (daily && reminder.done && reminder.completedOn === localDate(now)) {
+  if (daily && reminder.done && reminder.completedOn === localDate(now) && localDate(at) <= localDate(now)) {
     at = new Date(now);
     at.setDate(at.getDate() + 1);
     at.setHours(hh, mm, 0, 0);

@@ -167,3 +167,8 @@ test("web notification cancellation, replacement and long delays do not leak tim
     t.mock.timers.reset();
   }
 });
+
+test('completing a future daily reminder does not bring its start date forward', () => {
+  const at = nextFireForReminder({ repeat: 'daily', date: '2026-09-12', time: '10:00', done: true, completedOn: '2026-09-07' }, now);
+  assert.equal(localDate(at), '2026-09-12');
+});
