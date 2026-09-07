@@ -14,26 +14,40 @@ import {
   validTime,
 } from "../lib/planning.js";
 
-export function ThoughtCapture({ onClose, onSave, store, initial }) {
+export function ThoughtCapture({
+  onClose,
+  onSave,
+  store,
+  initial,
+  initialPlan,
+  onDelete,
+}) {
   const { lang } = useT();
   const it = lang === "it";
   const dialog = useRef(null);
   const editor = useRef(null);
   const request = useRef(0);
   const controller = useRef(null);
+  const [deleting, setDeleting] = useState(false);
   const [text, setText] = useState("");
   const [plan, setPlan] = useState(
-    initial
+    initialPlan
       ? {
-          parent: {
-            body: "",
-            ...initial,
-            repeat: isDailyReminder(initial) ? "daily" : "none",
-          },
-          children: [],
+          parent: { ...initialPlan.parent },
+          children: initialPlan.children.map((child) => ({ ...child })),
           source: "edit",
         }
-      : null,
+      : initial
+        ? {
+            parent: {
+              body: "",
+              ...initial,
+              repeat: isDailyReminder(initial) ? "daily" : "none",
+            },
+            children: [],
+            source: "edit",
+          }
+        : null,
   );
   const [selected, setSelected] = useState(0);
   const [dropped, setDropped] = useState([]);
@@ -46,6 +60,9 @@ export function ThoughtCapture({ onClose, onSave, store, initial }) {
       controller.current?.abort();
     };
   }, []);
+  useEffect(() => {
+    if (deleting) dialog.current?.querySelector(".delete-review h1")?.focus();
+  }, [deleting]);
   const close = () => {
     request.current += 1;
     controller.current?.abort();
@@ -92,6 +109,7 @@ export function ThoughtCapture({ onClose, onSave, store, initial }) {
     setDropped([]);
     setBusy(false);
   }
+  const isEditing = !!(initial || initialPlan);
   const nodes = plan ? [plan.parent, ...plan.children] : [];
   const kept = nodes.filter((_, i) => !dropped.includes(i));
   const invalid = kept.some(
@@ -103,8 +121,10 @@ export function ThoughtCapture({ onClose, onSave, store, initial }) {
   );
   function selectNode(index) {
     setSelected(index);
-    if (window.matchMedia('(max-width: 740px)').matches) {
-      requestAnimationFrame(() => editor.current?.scrollIntoView({ block: 'start', behavior: 'instant' }));
+    if (window.matchMedia("(max-width: 740px)").matches) {
+      requestAnimationFrame(() =>
+        editor.current?.scrollIntoView({ block: "start", behavior: "instant" }),
+      );
     }
   }
   function edit(patch) {
@@ -119,21 +139,51 @@ export function ThoughtCapture({ onClose, onSave, store, initial }) {
           },
     );
   }
+  function addPreparation() {
+    if (plan.children.length >= 6) return;
+    const nextIndex = plan.children.length + 1;
+    setPlan((p) => ({
+      ...p,
+      children: [
+        ...p.children,
+        {
+          title: "",
+          body: "",
+          date: null,
+          time: null,
+          repeat: "none",
+          when: "later",
+          icon: "spark",
+          tag: it ? "PREPARATIVI" : "PREP",
+        },
+      ],
+    }));
+    selectNode(nextIndex);
+    requestAnimationFrame(() =>
+      editor.current?.querySelector("input")?.focus(),
+    );
+  }
   function save() {
     if (invalid) return;
-    (plan.newFacts || []).forEach((fact) => addFact(fact));
     const clean = (n) => ({
       ...n,
       title: n.title.trim(),
       when: whenFor(n.time),
     });
-    onSave({
+    const saved = onSave({
       parent: clean(plan.parent),
       children: plan.children
         .filter((_, i) => !dropped.includes(i + 1))
         .map(clean),
       droppedChildren: plan.children.filter((_, i) => dropped.includes(i + 1)),
     });
+    if (saved !== false) (plan.newFacts || []).forEach((fact) => addFact(fact));
+    if (saved === false)
+      setNotice(
+        it
+          ? "Il piano è cambiato mentre lo modificavi. Chiudi e riaprilo per vedere gli aggiornamenti."
+          : "This plan changed while you were editing. Close and reopen it to see the updates.",
+      );
   }
   const examples = it
     ? [
@@ -166,7 +216,49 @@ export function ThoughtCapture({ onClose, onSave, store, initial }) {
           ×
         </button>
       </header>
-      {!plan ? (
+      {deleting ? (
+        <section className="delete-review">
+          <span className="calm-eyebrow">
+            {it ? "PRIMA DI ELIMINARE" : "BEFORE YOU LET IT GO"}
+          </span>
+          <h1 id="capture-title" tabIndex={-1}>
+            {initialPlan
+              ? it
+                ? "Eliminare questa costellazione?"
+                : "Delete this constellation?"
+              : it
+                ? "Eliminare questo promemoria?"
+                : "Delete this reminder?"}
+          </h1>
+          <p>
+            {it
+              ? "Verranno eliminati questi promemoria e le loro notifiche programmate. Dopo puoi annullare."
+              : "These reminders and their scheduled notifications will be removed. You can undo afterward."}
+          </p>
+          <ul>
+            {(initialPlan
+              ? [initialPlan.parent, ...initialPlan.children]
+              : [initial]
+            ).map((item) => (
+              <li key={item.id}>{item.title}</li>
+            ))}
+          </ul>
+          <div>
+            <button className="calm-ghost" onClick={() => setDeleting(false)}>
+              {it ? "Tieni tutto" : "Keep everything"}
+            </button>
+            <button className="calm-primary delete-confirm" onClick={onDelete}>
+              {initialPlan
+                ? it
+                  ? "Elimina costellazione"
+                  : "Delete constellation"
+                : it
+                  ? "Elimina promemoria"
+                  : "Delete reminder"}
+            </button>
+          </div>
+        </section>
+      ) : !plan ? (
         <div className="capture-compose">
           <span className="calm-eyebrow">
             {it ? "UN PENSIERO IN MENO" : "ONE LESS MENTAL TAB"}
@@ -241,7 +333,7 @@ export function ThoughtCapture({ onClose, onSave, store, initial }) {
         <>
           <div className="review-heading">
             <span className="calm-eyebrow">
-              {initial
+              {isEditing
                 ? it
                   ? "IL TUO PROMEMORIA"
                   : "YOUR REMINDER"
@@ -279,6 +371,33 @@ export function ThoughtCapture({ onClose, onSave, store, initial }) {
                 : "Fill in the draft below or go back to your thought."}
             </p>
           )}
+          <div className="plan-tools">
+            <span>
+              {isEditing
+                ? it
+                  ? "Le modifiche si applicano solo quando salvi."
+                  : "Changes apply only when you save."
+                : it
+                  ? "Puoi aggiungere i tuoi preparativi."
+                  : "Make room for your own preparations."}
+            </span>
+            {initial?.kind !== "child" && (
+              <button
+                className="calm-ghost"
+                disabled={plan.children.length >= 6}
+                onClick={addPreparation}
+              >
+                {it ? "+ Aggiungi preparativo" : "+ Add preparation"}
+              </button>
+            )}
+          </div>
+          {plan.children.length >= 6 && (
+            <p className="capture-footnote plan-limit">
+              {it
+                ? "Fino a sei preparativi per costellazione."
+                : "Up to six preparations per constellation."}
+            </p>
+          )}
           <div
             className={`review-layout ${nodes.length === 1 ? "single-review" : ""}`}
           >
@@ -292,7 +411,11 @@ export function ThoughtCapture({ onClose, onSave, store, initial }) {
                       : "Choose a node to edit"
                   }
                 >
-                  <svg viewBox="0 0 360 300" preserveAspectRatio="none" aria-hidden="true">
+                  <svg
+                    viewBox="0 0 360 300"
+                    preserveAspectRatio="none"
+                    aria-hidden="true"
+                  >
                     {plan.children.map((_, i) => {
                       const angle =
                         -Math.PI / 2 + (i * 2 * Math.PI) / plan.children.length;
@@ -338,7 +461,13 @@ export function ThoughtCapture({ onClose, onSave, store, initial }) {
                         aria-label={`${it ? "Modifica" : "Edit"}: ${child.title}`}
                       >
                         <Icon
-                          name={child.icon === "pin" ? "pin" : "spark"}
+                          name={
+                            child.done
+                              ? "check"
+                              : child.icon === "pin"
+                                ? "pin"
+                                : "spark"
+                          }
                           size={18}
                         />
                         <span>{i + 1}</span>
@@ -357,7 +486,10 @@ export function ThoughtCapture({ onClose, onSave, store, initial }) {
                       <span>{i === 0 ? "✳" : String(i).padStart(2, "0")}</span>
                       <span>
                         <strong>{node.title}</strong>
-                        <small>{dateLabel(node, lang)}</small>
+                        <small>
+                          {dateLabel(node, lang)}
+                          {node.done ? (it ? " · Fatto" : " · Done") : ""}
+                        </small>
                       </span>
                       <span>↗</span>
                     </button>
@@ -396,6 +528,13 @@ export function ThoughtCapture({ onClose, onSave, store, initial }) {
                   </button>
                 )}
               </div>
+              {nodes[selected].done && (
+                <p className="capture-footnote">
+                  {it
+                    ? "Già completato. Modificarlo non lo riapre."
+                    : "Already done. Editing won’t reopen it."}
+                </p>
+              )}
               <label>
                 {it ? "Cosa vuoi ricordare" : "What to remember"}
                 <input
@@ -460,20 +599,34 @@ export function ThoughtCapture({ onClose, onSave, store, initial }) {
               </p>
               {selected > 0 && (
                 <p className="capture-footnote">
-                  {it
-                    ? "È un suggerimento. Tocca “Incluso” per escluderlo."
-                    : "This is a suggestion. Tap “Keeping this” to leave it out."}
+                  {isEditing
+                    ? it
+                      ? "Escludilo per rimuoverlo quando salvi. Puoi annullare dopo."
+                      : "Leave it out to remove it when you save. You can undo afterward."
+                    : it
+                      ? "È un suggerimento. Tocca “Incluso” per escluderlo."
+                      : "This is a suggestion. Tap “Keeping this” to leave it out."}
                 </p>
               )}
             </div>
           </div>
           <footer className="review-footer">
-            <button
-              className="calm-ghost"
-              onClick={() => (initial ? close() : setPlan(null))}
-            >
-              {it ? "Indietro" : "Back"}
-            </button>
+            <div className="review-secondary">
+              <button
+                className="calm-ghost"
+                onClick={() => (isEditing ? close() : setPlan(null))}
+              >
+                {it ? "Indietro" : "Back"}
+              </button>
+              {isEditing && onDelete && (
+                <button
+                  className="calm-ghost delete-link"
+                  onClick={() => setDeleting(true)}
+                >
+                  {it ? "Elimina…" : "Delete…"}
+                </button>
+              )}
+            </div>
             <div>
               {invalid && (
                 <small role="status">
@@ -487,7 +640,7 @@ export function ThoughtCapture({ onClose, onSave, store, initial }) {
                 onClick={save}
                 disabled={invalid}
               >
-                {initial
+                {isEditing
                   ? it
                     ? "Salva modifiche"
                     : "Save changes"

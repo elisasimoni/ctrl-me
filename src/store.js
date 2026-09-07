@@ -1,4 +1,9 @@
 import { useEffect, useState, useCallback } from "react";
+import {
+  applyChange,
+  canApplyChange,
+  savedPlanChange,
+} from "./lib/planChanges.js";
 import { localDate, whenFor } from "./lib/planning.js";
 let lastId = Date.now();
 const nextId = () => {
@@ -371,17 +376,34 @@ export function useStore(/* t, lang kept for signature compat */) {
 
   const restoreReminder = useCallback((reminder) => {
     setState((s) => {
-      const eventIndex = s.behaviorLog.findLastIndex(e => e.reminderId === reminder.id);
+      const eventIndex = s.behaviorLog.findLastIndex(
+        (e) => e.reminderId === reminder.id,
+      );
       return {
         ...s,
-        reminders: s.reminders.map((r) => (r.id === reminder.id ? reminder : r)),
+        reminders: s.reminders.map((r) =>
+          r.id === reminder.id ? reminder : r,
+        ),
         behaviorLog: s.behaviorLog.filter((_, index) => index !== eventIndex),
       };
     });
   }, []);
 
+  const preparePlanChange = (original, draft) =>
+    savedPlanChange(original, draft, nextId);
+  const commitChange = (change) => {
+    if (!canApplyChange(state.reminders, change)) return false;
+    setState((s) => {
+      const reminders = applyChange(s.reminders, change);
+      return reminders === s.reminders ? s : { ...s, reminders };
+    });
+    return true;
+  };
+
   return {
     state,
+    preparePlanChange,
+    commitChange,
     storageError,
     restoreReminder,
     toggleDone,

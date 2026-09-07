@@ -10,6 +10,7 @@ export function CalmHome({
   store,
   onCompose,
   onEdit,
+  onPlan,
   onSettings,
   onProfile,
   onAction,
@@ -225,6 +226,37 @@ export function CalmHome({
                 ))}
               </div>
             )}
+            {filter &&
+              parents.find((parent) => parent.clusterId === filter) && (
+                <div className="saved-plan-bar">
+                  <span>
+                    <strong>
+                      {
+                        parents.find((parent) => parent.clusterId === filter)
+                          .title
+                      }
+                    </strong>
+                    <small>
+                      {
+                        state.reminders.filter(
+                          (item) => item.clusterId === filter && !item.done,
+                        ).length
+                      }{" "}
+                      {it ? "ancora da fare" : "still to do"}
+                    </small>
+                  </span>
+                  <button
+                    className="calm-primary"
+                    onClick={() =>
+                      onPlan(
+                        parents.find((parent) => parent.clusterId === filter),
+                      )
+                    }
+                  >
+                    {it ? "Apri costellazione ↗" : "Open constellation ↗"}
+                  </button>
+                </div>
+              )}
             {state.prefs.profile.permWeather &&
               state.prefs.profile.permLocation && (
                 <WeatherBanner
@@ -242,7 +274,10 @@ export function CalmHome({
                     ),
                   );
                 return (
-                  <section className={`home-lane ${items.length ? "" : "is-empty"}`} key={lane.key}>
+                  <section
+                    className={`home-lane ${items.length ? "" : "is-empty"}`}
+                    key={lane.key}
+                  >
                     <header>
                       <h2>{lane.label}</h2>
                       <span>{items.length.toString().padStart(2, "0")}</span>
@@ -288,7 +323,18 @@ export function CalmHome({
                               }
                             </span>
                           ) : (
-                            <span>{r.tag}</span>
+                            <span>
+                              {r.kind === "parent" ? (
+                                <button
+                                  className="open-plan-link"
+                                  onClick={() => onPlan(r)}
+                                >
+                                  {it ? "Apri piano ↗" : "Open plan ↗"}
+                                </button>
+                              ) : (
+                                r.tag
+                              )}
+                            </span>
                           )}
                           <button
                             onClick={() => onAction(r, "snooze")}
@@ -318,7 +364,13 @@ export function CalmHome({
                 </summary>
                 {completed.map((r) => (
                   <div key={r.id}>
-                    <span>{r.title}</span>
+                    <button
+                      className="completed-edit"
+                      onClick={() => onEdit(r)}
+                      aria-label={`${it ? "Modifica completato" : "Edit completed reminder"}: ${r.title}`}
+                    >
+                      {r.title}
+                    </button>
                     <button
                       className="calm-ghost"
                       onClick={() => onAction(r, "done")}

@@ -6,6 +6,7 @@ import { ThoughtCapture } from "./components/ThoughtCapture.jsx";
 import { CalmHome } from "./screens/CalmHome.jsx";
 import { useReminderNotifications } from "./lib/useReminderNotifications.js";
 import { registerNotificationActions } from "./native/notifications.js";
+import { inverseChange, deletionChange } from "./lib/planChanges.js";
 import "./calm.css";
 
 export default function App() {
@@ -17,9 +18,9 @@ export default function App() {
   const [toast, setToast] = useState(null);
   const timer = useRef(null);
   useEffect(() => () => clearTimeout(timer.current), []);
-  function announce(message, before = null) {
+  function announce(message, before = null, change = null) {
     clearTimeout(timer.current);
-    setToast({ message, before });
+    setToast({ message, before, change });
     timer.current = setTimeout(() => setToast(null), 10000);
   }
   useReminderNotifications(
@@ -42,22 +43,69 @@ export default function App() {
     window.addEventListener("ctrlme.notif.action", handler);
     return () => window.removeEventListener("ctrlme.notif.action", handler);
   }, [store.toggleDone, store.snooze]);
+  function openPlan(parent) {
+    setCapture({
+      plan: {
+        parent,
+        children: store.state.reminders.filter(
+          (item) =>
+            item.parentId === parent.id && item.clusterId === parent.clusterId,
+        ),
+      },
+    });
+  }
+  function editReminder(reminder) {
+    if (reminder.kind === "parent") openPlan(reminder);
+    else setCapture({ reminder });
+  }
   function save(plan) {
     const before = capture?.reminder;
-    if (before) store.updateReminder(before.id, plan.parent);
+    const original =
+      capture?.plan ||
+      (before && before.kind !== "child"
+        ? { parent: before, children: [] }
+        : null);
+    let change = null;
+    if (original) {
+      change = store.preparePlanChange(original, plan);
+      if (!store.commitChange(change)) return false;
+    } else if (before) store.updateReminder(before.id, plan.parent);
     else if (plan.children.length) store.addCluster(plan);
     else store.addReminder(plan.parent);
     store.setPref("onboarded", true);
     setCapture(null);
     announce(
-      before
+      original || before
         ? it
           ? "Modifiche salvate."
           : "Changes saved."
         : it
           ? "Salvato. Un pensiero in meno."
           : "Saved. One less thing to carry.",
-      before,
+      change ? null : before,
+      change,
+    );
+    return true;
+  }
+  function removeCaptured() {
+    const before = capture.plan
+      ? [capture.plan.parent, ...capture.plan.children]
+      : [capture.reminder];
+    const change = deletionChange(before, before[0]);
+    if (!store.commitChange(change)) {
+      announce(
+        it
+          ? "Il piano è cambiato. Riaprilo prima di eliminarlo."
+          : "The plan changed. Reopen it before deleting.",
+      );
+      setCapture(null);
+      return;
+    }
+    setCapture(null);
+    announce(
+      it ? "Eliminato. Puoi ancora annullare." : "Removed. You can still undo.",
+      null,
+      change,
     );
   }
   function action(reminder, type) {
@@ -92,7 +140,8 @@ export default function App() {
       <CalmHome
         store={store}
         onCompose={() => setCapture({})}
-        onEdit={(reminder) => setCapture({ reminder })}
+        onEdit={editReminder}
+        onPlan={openPlan}
         onSettings={() => setPanel("config")}
         onProfile={() => setPanel("profile")}
         onAction={action}
@@ -101,6 +150,10 @@ export default function App() {
         <ThoughtCapture
           store={store}
           initial={capture.reminder}
+          initialPlan={capture.plan}
+          onDelete={
+            capture.reminder || capture.plan ? removeCaptured : undefined
+          }
           onSave={save}
           onClose={() => setCapture(null)}
         />
@@ -114,10 +167,19 @@ export default function App() {
       {toast && (
         <div className="calm-toast" role="status">
           <span>{toast.message}</span>
-          {toast.before && (
+          {(toast.before || toast.change) && (
             <button
               onClick={() => {
-                store.restoreReminder(toast.before);
+                if (toast.change) {
+                  if (!store.commitChange(inverseChange(toast.change))) {
+                    announce(
+                      it
+                        ? "Ci sono modifiche più recenti. Annullamento non applicato."
+                        : "There are newer changes. Undo was not applied.",
+                    );
+                    return;
+                  }
+                } else store.restoreReminder(toast.before);
                 clearTimeout(timer.current);
                 setToast(null);
               }}

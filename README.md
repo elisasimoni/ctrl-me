@@ -58,6 +58,24 @@ questionnaire. Try **“Presentation tomorrow at 10”**, then review the draft:
 | **Weather** | Optional Open-Meteo weather suggestions when both weather and location preferences are enabled. |
 | **Installable** | Offline-capable PWA and Capacitor Android app. Existing local reminders and preferences are retained. |
 
+## Keep shaping a saved plan
+
+Use **Open plan** on a constellation, or select its filter and choose
+**Open constellation**. You can rename the event, edit any preparation, add up to
+six preparations, and leave out the ones you no longer need. Existing reminder
+IDs, completion state, dates, and connections are retained.
+
+A standalone reminder can become a constellation with **Add preparation**.
+Completed reminders can also be opened from the Done section.
+
+**Delete…** shows the exact reminders before removing anything: deleting a main
+event removes its constellation; deleting a preparation removes only that item.
+**Undo** restores edits or deletions, including the original completion state.
+If a newer action changes the same reminders, an old draft or Undo is rejected
+instead of overwriting it. Web notification timers follow these changes too.
+
+<img src=".github/assets/product-saved-plan.png" width="1000" alt="Editing a saved constellation with completed preparations, Add preparation, and Delete controls">
+
 ## Try the playground
 
 [**Give your brain a break →**](https://elisasimoni.github.io/ctrl-me/)
@@ -167,6 +185,7 @@ Pushing a `v*.*.*` tag builds and publishes a debug APK via
 - [`src/native/notifications.js`](src/native/notifications.js): native/web scheduling, cancellation, and recurrence.
 - [`src/calm.css`](src/calm.css): shared light/dark product styling.
 - [`tests/planning.test.js`](tests/planning.test.js): automated planning and scheduling checks.
+- [`src/lib/planChanges.js`](src/lib/planChanges.js) and [`tests/planChanges.test.js`](tests/planChanges.test.js): atomic plan edits, deletion, and conflict-aware Undo.
 
 Earlier visual explorations remain in `DirA`, `DirB`, `ThemeChooser`, and
 `ConstellationReveal`; the main app now uses the calm workspace above.
