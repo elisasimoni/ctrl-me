@@ -5,20 +5,29 @@
 // - User message: memory block (few facts) + the reminder text. Cheap, uncached.
 // - Result: clean title, correct time, icon, body in personality+lang, new facts to save.
 //
-// SECURITY: dangerouslyAllowBrowser is fine for local dev.
-// For production move to a /api/analyze server route.
+// SECURITY: dangerouslyAllowBrowser is a prototype affordance — the key lives
+// in the browser either way. For production move to a /api/analyze server route
+// and delete apiKey.js along with this flag.
 
 import Anthropic from '@anthropic-ai/sdk';
 import { memoryBlock, addFact } from '../native/memory.js';
+import { getApiKey, onApiKeyChange } from './apiKey.js';
 
 const MODEL = 'claude-haiku-4-5';
 
 let _client = null;
+let _clientKey = null;
+
+// Drop the cached client the moment the key changes, so pasting a key in
+// Settings takes effect without a reload.
+onApiKeyChange(() => { _client = null; _clientKey = null; });
+
 function client() {
-  if (_client) return _client;
-  const apiKey = import.meta.env.VITE_ANTHROPIC_API_KEY;
-  if (!apiKey || apiKey === 'sk-ant-...') return null;
+  const apiKey = getApiKey();
+  if (!apiKey) return null;
+  if (_client && _clientKey === apiKey) return _client;
   _client = new Anthropic({ apiKey, dangerouslyAllowBrowser: true });
+  _clientKey = apiKey;
   return _client;
 }
 

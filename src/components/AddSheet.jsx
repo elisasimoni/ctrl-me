@@ -4,10 +4,19 @@ import { useT } from '../i18n.jsx';
 import { analyzeReminder, isLlmEnabled } from '../lib/llm.js';
 import { ConstellationReveal } from './ConstellationReveal.jsx';
 
+// Tags the local parser can produce, per language.
+const LOCAL_TAGS = {
+  it: { note: 'NOTA', rain: 'METEO', pill: 'PILLOLA · OGNI GIORNO', pin: 'LUOGO',
+        wallet: 'BUDGET', birthday: 'COMPLEANNO', moon: 'NOTTE' },
+  en: { note: 'NOTE', rain: 'WEATHER', pill: 'PILL · DAILY', pin: 'PLACE',
+        wallet: 'BUDGET', birthday: 'BIRTHDAY', moon: 'NIGHT' },
+};
+
 // Local fallback parser — runs when no API key is configured.
 // Cleans title, extracts time, picks icon — without LLM.
-function parseLocal(text) {
+function parseLocal(text, lang = 'en') {
   const t = text.toLowerCase();
+  const tags = LOCAL_TAGS[lang] ?? LOCAL_TAGS.en;
 
   // Extract time ("alle 9", "at 9", "9am", "9:15", "alle 9:30")
   const timeMatch = t.match(/(?:alle?|at)\s*(\d{1,2})(?::(\d{2}))?|(\d{1,2}):(\d{2})/);
@@ -32,13 +41,13 @@ function parseLocal(text) {
   if (title.length > 42) title = title.slice(0, 40).trim() + '…';
 
   // Icon
-  let icon = 'spark', tag = 'NOTE';
-  if (/(rain|umbrella|weather|cloud|piov|piogg|ombrell|meteo|nuvol)/.test(t)) { icon = 'rain'; tag = 'METEO'; }
-  else if (/(pill|med|vitamin|drug|pillol|farmac|medicin)/.test(t))            { icon = 'pill'; tag = 'PILLOLA · OGNI GIORNO'; }
-  else if (/(exam|class|building|room|school|esame|aula|edificio|lezion)/.test(t)) { icon = 'pin'; tag = 'LUOGO'; }
-  else if (/(\$|€|budget|spend|takeout|money|spes|euro|denar)/.test(t))        { icon = 'wallet'; tag = 'BUDGET'; }
-  else if (/(birthday|gift|complean|regal)/.test(t))                           { icon = 'spark'; tag = 'COMPLEANNO'; }
-  else if (/(sleep|bed|night|sonno|letto|dorm)/.test(t))                       { icon = 'moon'; tag = 'NOTTE'; }
+  let icon = 'spark', tag = tags.note;
+  if (/(rain|umbrella|weather|cloud|piov|piogg|ombrell|meteo|nuvol)/.test(t)) { icon = 'rain'; tag = tags.rain; }
+  else if (/(pill|med|vitamin|drug|pillol|farmac|medicin)/.test(t))            { icon = 'pill'; tag = tags.pill; }
+  else if (/(exam|class|building|room|school|esame|aula|edificio|lezion)/.test(t)) { icon = 'pin'; tag = tags.pin; }
+  else if (/(\$|€|budget|spend|takeout|money|spes|euro|denar)/.test(t))        { icon = 'wallet'; tag = tags.wallet; }
+  else if (/(birthday|gift|complean|regal)/.test(t))                           { icon = 'spark'; tag = tags.birthday; }
+  else if (/(sleep|bed|night|sonno|letto|dorm)/.test(t))                       { icon = 'moon'; tag = tags.moon; }
 
   return { icon, tag, time, when, title };
 }
@@ -113,6 +122,20 @@ export function AddSheet({ open, onClose, onAdd, onAddCluster, personality, prof
   const [clusterPending, setClusterPending] = useState(null); // { parent, why, children }
   const ref = useRef(null);
 
+  // Single source of truth for the no-LLM path: used both when no key is
+  // configured and when the API call fails, so the two agree.
+  const fallbackReminder = (raw) => {
+    const meta = parseLocal(raw, lang);
+    return {
+      icon: meta.icon,
+      tag: meta.tag,
+      title: meta.title,
+      body: localBody({ icon: meta.icon, personality, lang }),
+      time: meta.time,
+      when: meta.when,
+    };
+  };
+
   useEffect(() => {
     if (open) setTimeout(() => ref.current?.focus(), 100);
     else { setText(''); setAnalysis(null); setError(null); setExtra(''); setLoading(false); setClusterPending(null); }
@@ -153,13 +176,7 @@ export function AddSheet({ open, onClose, onAdd, onAddCluster, personality, prof
     }
 
     if (!isLlmEnabled()) {
-      const meta = parseLocal(trimmed);
-      onAdd({
-        title: trimmed.charAt(0).toUpperCase() + trimmed.slice(1),
-        body: localBody({ icon: meta.icon, personality, lang }),
-        icon: meta.icon,
-        tag: meta.tag,
-      });
+      onAdd(fallbackReminder(trimmed));
       onClose();
       return;
     }
@@ -183,15 +200,7 @@ export function AddSheet({ open, onClose, onAdd, onAddCluster, personality, prof
       }
     } catch (e) {
       console.error('[CTRL+Me] LLM call failed, falling back:', e);
-      const meta = parseLocal(trimmed);
-      onAdd({
-        title: meta.title,
-        body: localBody({ icon: meta.icon, personality, lang }),
-        icon: meta.icon,
-        tag: meta.tag,
-        time: meta.time,
-        when: meta.when,
-      });
+      onAdd(fallbackReminder(trimmed));
       onClose();
     }
   };

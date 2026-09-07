@@ -19,9 +19,12 @@ export function ThemeChooser({ onPick }) {
   const [, force] = useState(0);
   const [exiting, setExiting] = useState(null); // 'A' | 'B' | null
 
+  // The loop only runs while something actually moves — dragging, springing
+  // back, or flying off-screen. At rest it stops, so an untouched chooser costs
+  // zero frames instead of re-rendering 60 times a second.
   const tick = () => {
     const s = stateRef.current;
-    if (!s.dragging && !exiting) {
+    if (!s.dragging) {
       // spring back to 0
       const ax = -SPRING_K * s.x;
       s.vx = (s.vx + ax) * DAMPING;
@@ -31,13 +34,20 @@ export function ThemeChooser({ onPick }) {
       }
     }
     force(n => (n + 1) & 0xffff);
-    rafRef.current = requestAnimationFrame(tick);
+    if (s.dragging || s.x !== 0 || s.vx !== 0) {
+      rafRef.current = requestAnimationFrame(tick);
+    } else {
+      rafRef.current = 0;
+    }
+  };
+
+  const startLoop = () => {
+    if (!rafRef.current) rafRef.current = requestAnimationFrame(tick);
   };
 
   useEffect(() => {
     const el = wrapRef.current;
     if (el) stateRef.current.width = el.clientWidth;
-    rafRef.current = requestAnimationFrame(tick);
     const onResize = () => { if (el) stateRef.current.width = el.clientWidth; };
     window.addEventListener('resize', onResize);
     return () => { cancelAnimationFrame(rafRef.current); window.removeEventListener('resize', onResize); };
@@ -49,6 +59,7 @@ export function ThemeChooser({ onPick }) {
     e.currentTarget.setPointerCapture?.(e.pointerId);
     const s = stateRef.current;
     s.dragging = true;
+    startLoop();
     s.startX = e.clientX - s.x;
     s.lastX = e.clientX;
     s.lastT = performance.now();
@@ -68,6 +79,8 @@ export function ThemeChooser({ onPick }) {
   const commit = (dir) => {
     setExiting(dir);
     const s = stateRef.current;
+    cancelAnimationFrame(rafRef.current);
+    rafRef.current = 0;
     // launch off-screen
     const target = dir === 'A' ? -s.width : s.width;
     const start = performance.now();
@@ -77,11 +90,9 @@ export function ThemeChooser({ onPick }) {
       const k = Math.min(1, (now - start) / dur);
       const eased = 1 - Math.pow(1 - k, 3);
       s.x = from + (target - from) * eased;
+      force(n => (n + 1) & 0xffff);
       if (k < 1) requestAnimationFrame(animate);
-      else {
-        cancelAnimationFrame(rafRef.current);
-        onPick?.(dir);
-      }
+      else onPick?.(dir);
     };
     requestAnimationFrame(animate);
   };

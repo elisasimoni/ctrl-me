@@ -149,7 +149,7 @@ async function rawSchedule({ id, title, body, at, repeats, extra }) {
   setTimeout(() => {
     if (typeof Notification === 'undefined') return;
     if (Notification.permission !== 'granted') return;
-    new Notification(title, { body, icon: '/icon.svg', tag: String(id) });
+    new Notification(title, { body, icon: `${import.meta.env.BASE_URL}icon.svg`, tag: String(id) });
   }, delay);
 }
 

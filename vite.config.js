@@ -2,7 +2,12 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 
+// The GitHub Pages demo lives at /ctrl-me/; `npm run dev` and the Capacitor
+// Android build both serve from the root. BASE_PATH lets CI override it.
+const base = process.env.BASE_PATH ?? '/';
+
 export default defineConfig({
+  base,
   plugins: [
     react(),
     VitePWA({
@@ -16,10 +21,12 @@ export default defineConfig({
         background_color: '#f4f1ec',
         display: 'standalone',
         orientation: 'portrait',
-        start_url: '/',
+        // Relative so the PWA also installs correctly from a subpath.
+        start_url: '.',
+        scope: base,
         icons: [
-          { src: '/icon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any' },
-          { src: '/icon-maskable.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'maskable' },
+          { src: 'icon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any' },
+          { src: 'icon-maskable.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'maskable' },
         ],
       },
       workbox: {

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useT } from '../i18n.jsx';
 import { loadMemory, removeFact, clearMemory } from '../native/memory.js';
 import { isLlmEnabled } from '../lib/llm.js';
+import { setApiKey, hasStoredKey } from '../lib/apiKey.js';
 import { Pebble } from '../atoms.jsx';
 import {
   TOKENS, toggleInArray,
@@ -208,6 +209,13 @@ export function Settings({ open, mode = 'profile', onClose, store }) {
         </Section>
         )}
 
+        {/* AI brain — config */}
+        {isConfig && (
+        <Section tok={tok} label={lang === 'it' ? 'Cervello AI' : 'AI brain'}>
+          <ApiKeyField tok={tok} lang={lang} onChange={() => forceRender(n => n + 1)} />
+        </Section>
+        )}
+
         {/* Ambient — config */}
         {isConfig && (
         <Section tok={tok} label={t('settings.section.ambient')}>
@@ -285,6 +293,65 @@ export function Settings({ open, mode = 'profile', onClose, store }) {
         </Section>
         )}
       </div>
+    </div>
+  );
+}
+
+// Lets whoever runs the app supply their own Anthropic key — which is what
+// makes the public demo able to show the Haiku flow at all, since the deployed
+// build ships no key. Stored in localStorage, on this device only.
+function ApiKeyField({ tok, lang, onChange }) {
+  const [draft, setDraft] = useState('');
+  const stored = hasStoredKey();
+  const active = isLlmEnabled();
+
+  const save = () => {
+    if (!draft.trim()) return;
+    setApiKey(draft);
+    setDraft('');
+    onChange();
+  };
+
+  return (
+    <div>
+      <div style={{ fontSize: 13, color: tok.dim, marginBottom: 10, lineHeight: 1.45 }}>
+        {active
+          ? (lang === 'it' ? 'Haiku 4.5 attivo ●' : 'Haiku 4.5 connected ●')
+          : (lang === 'it'
+              ? 'Senza chiave uso il parser locale. Incolla una chiave Anthropic per il parsing intelligente — resta solo in questo browser.'
+              : 'Without a key I use the local parser. Paste an Anthropic key for smart parsing — it stays in this browser only.')}
+      </div>
+
+      {active && !stored ? null : stored ? (
+        <DangerLink tok={tok} onClick={() => { setApiKey(''); onChange(); }}
+          label={lang === 'it' ? 'Rimuovi la chiave' : 'Remove key'} />
+      ) : (
+        <div style={{ display: 'flex', gap: 8 }}>
+          <input
+            type="password"
+            value={draft}
+            onChange={e => setDraft(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter') save(); }}
+            placeholder="sk-ant-…"
+            autoComplete="off"
+            spellCheck={false}
+            style={{
+              flex: 1, minWidth: 0, height: 44, padding: '0 14px',
+              borderRadius: 12, outline: 'none',
+              border: `1px solid ${tok.hair}`,
+              background: 'transparent', color: tok.ink,
+              fontFamily: tok.fontBody, fontSize: 14,
+            }}
+          />
+          <button onClick={save} disabled={!draft.trim()} style={{
+            height: 44, padding: '0 20px', borderRadius: 12, border: 'none',
+            background: tok.ink, color: tok.bg,
+            cursor: draft.trim() ? 'pointer' : 'not-allowed',
+            opacity: draft.trim() ? 1 : 0.4,
+            fontFamily: tok.fontTitle, fontSize: 14, fontWeight: 600,
+          }}>{lang === 'it' ? 'Salva' : 'Save'}</button>
+        </div>
+      )}
     </div>
   );
 }
