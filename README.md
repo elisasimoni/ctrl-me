@@ -2,7 +2,7 @@
 
 # CTRL+Me
 
-**The buddy who notices.** A black-and-white reminder app that reads the room —
+**Your brain’s new plus one.** A thoughtful reminder app that reads the room —
 you type the messy sentence you'd actually say out loud, and it comes back as a
 clean reminder, at the right time, in your tone.
 
@@ -14,7 +14,7 @@ clean reminder, at the right time, in your tone.
 ![Claude Haiku 4.5](https://img.shields.io/badge/Claude-Haiku%204.5-0d0d0d?style=flat-square)
 ![MIT](https://img.shields.io/badge/license-MIT-0d0d0d?style=flat-square)
 
-<img src=".github/assets/demo.gif" width="300" alt="Typing a messy sentence and getting back a clean, timed reminder">
+<a href="https://elisasimoni.github.io/ctrl-me/"><img src=".github/assets/showcase-desktop.png" width="1200" alt="CTRL+Me interactive playground: a clear head, three linked reminders, and a little less noise"></a>
 
 </div>
 
@@ -24,7 +24,7 @@ clean reminder, at the right time, in your tone.
 
 Reminder apps make *you* do the structuring: pick a date, pick a time, pick a
 list, write a title. CTRL+Me does the structuring itself. You type
-*"ricordami la pillola tutti i giorni alle 8"* and it extracts the action,
+*"remind me to take my pill every day at 8"* and it extracts the action,
 parses the time, picks an icon, replies in your language and tone, and files
 away the parts worth remembering.
 
@@ -36,48 +36,33 @@ affirmations — one nudge, when it actually matters, and silence otherwise.
 | | |
 |---|---|
 | **Natural-language capture** | One text field. Claude Haiku 4.5 returns a structured reminder: `{icon, tag, title, body, time, when}`. |
-| **Follow-up questions** | When something critical is missing (*"ho un esame domani"* — when? which room?) it asks instead of guessing. |
-| **Constellations** | A request that implies several linked reminders ("devo arrivare lucida all'analisi di martedì") is proposed as a cluster — parent plus children — that you accept, trim, or drop. |
+| **Follow-up questions** | When something critical is missing (*"I have an exam tomorrow"* — when? which room?) it asks instead of guessing. |
+| **Constellations** | A request that implies several linked reminders ("help me get ready for my exam on Tuesday") is proposed as a cluster — parent plus children — that you accept, trim, or drop. |
 | **It learns your patterns** | The app logs what you complete, skip, and reschedule, then feeds a short summary back into the next call: reminders you keep dismissing, your most reliable time of day, habits that have become daily, candidates to archive. |
 | **Tone that adapts quietly** | A streak of completions makes it *terser*, not louder — and it is explicitly forbidden from ever mentioning the streak. |
 | **Real notifications** | Scheduled through the OS, with snooze, daily repeats, action buttons, and quiet hours. |
 | **Weather nudges** | Open-Meteo + geolocation: if rain is likely in the next six hours, it offers the umbrella. |
 | **Works with no AI at all** | With no API key it falls back to a local regex parser — still cleans the title, still finds the time. |
 | **Two design directions** | The same app in two skins, chosen by dragging a mascot left or right. |
-| **Bilingual** | Italian (Gen-Z register) and English, auto-detected from the browser locale. |
+| **Bilingual** | English by default, with Italian available in Settings. |
 | **Installable** | PWA (offline-capable, add to home screen) and a real Android build via Capacitor. |
 
-## Screens
+## Try the playground
 
-<table>
-<tr>
-<td width="25%"><img src=".github/assets/01-theme-chooser.png" alt="Theme chooser: drag the mascot left for OS, right for Pebble"></td>
-<td width="25%"><img src=".github/assets/02-questionnaire.png" alt="Onboarding questionnaire, choosing a tone"></td>
-<td width="25%"><img src=".github/assets/04-home-pebble.png" alt="Home in the Pebble theme"></td>
-<td width="25%"><img src=".github/assets/05-home-os.png" alt="Home in the OS theme"></td>
-</tr>
-<tr>
-<td align="center"><sub><b>Pick a theme</b><br>drag, don't tap</sub></td>
-<td align="center"><sub><b>Getting to know you</b><br>11 questions, all skippable</sub></td>
-<td align="center"><sub><b>Home</b><br>Pebble · warm paper</sub></td>
-<td align="center"><sub><b>Home</b><br>OS · terminal-adjacent</sub></td>
-</tr>
-</table>
+[**Give your brain a break →**](https://elisasimoni.github.io/ctrl-me/)
 
-<table>
-<tr>
-<td width="25%"><img src=".github/assets/06-capture.png" alt="Capture sheet with a free-text reminder"></td>
-<td width="25%"><img src=".github/assets/07-constellation.png" alt="A proposed cluster of linked reminders"></td>
-<td width="25%"><img src=".github/assets/08-nudge-os.png" alt="Lockscreen nudge about rain"></td>
-<td width="25%"><img src=".github/assets/03-onboarding.png" alt="Onboarding, Pebble direction"></td>
-</tr>
-<tr>
-<td align="center"><sub><b>Capture</b><br>one field, no form</sub></td>
-<td align="center"><sub><b>Constellation</b><br>one ask → five linked things</sub></td>
-<td align="center"><sub><b>The nudge</b><br>one, only when useful</sub></td>
-<td align="center"><sub><b>Onboarding</b><br>setting expectations</sub></td>
-</tr>
-</table>
+Choose **The big day**, **Everyday brain**, or **Weekend escape**. Run the preview,
+watch one thought become three linked reminders, check them off, and switch
+between Pebble and OS. Works on desktop and mobile, with reduced-motion support.
+
+The playground uses **scripted English scenarios**, not live AI inference. It
+makes no API calls and saves no demo reminders to your personal list. Open the
+[full app](https://elisasimoni.github.io/ctrl-me/#app) to capture your own thoughts;
+the app works locally without a key, with optional Claude-powered analysis.
+
+The public experience starts in English. Italian remains available in the app’s
+Settings, and your language choice is remembered. Installed PWAs and Android
+launch directly into the app.
 
 ## How the AI part works
 
@@ -122,7 +107,7 @@ tapping a radio button would have been sad:
 - **OS** — mono, near-black, terminal-adjacent. Tags, timestamps, a blinking cursor.
 - **Pebble** — warm paper, an editorial serif/sans mix, rounded cards, a mascot with eyes.
 
-Both are pure black-and-white. There is no accent colour anywhere in the app.
+Both app themes keep their monochrome identity. The public playground adds soft sage and lime accents around an interactive phone preview.
 
 ## Stack
 
@@ -135,7 +120,7 @@ Both are pure black-and-white. There is no accent colour anywhere in the app.
 - **Anthropic SDK** — `claude-haiku-4-5`.
 - **Open-Meteo** — weather, no key required.
 - **localStorage** — all state. No backend, no account, nothing leaves the device
-  except the reminder text you type.
+  except data sent to enabled services: AI analysis includes your input, profile, behavior summary, and remembered context; weather uses your location.
 
 ## Run it locally
 
@@ -171,9 +156,11 @@ Pushing a `v*.*.*` tag builds and publishes a debug APK via
 
 ```
 src/
+├── Showcase.jsx               English landing page and isolated interactive preview
+├── showcase.css               responsive playground styling and motion
 ├── App.jsx                    theme picker → questionnaire → onboarding → home
 ├── store.js                   reminders, prefs, profile, behaviour log (localStorage)
-├── i18n.jsx                   IT/EN dictionary, locale auto-detection
+├── i18n.jsx                   IT/EN dictionary, English default
 ├── atoms.jsx                  logo, icon set, mascot, pills
 ├── lib/
 │   ├── llm.js                 the Haiku call: cached system prompt, JSON schema

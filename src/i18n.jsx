@@ -567,8 +567,7 @@ export function I18nProvider({ children }) {
       const stored = localStorage.getItem('ctrlme.lang');
       if (stored === 'en' || stored === 'it') return stored;
     } catch {}
-    const nav = (navigator.language || 'en').slice(0, 2);
-    return nav === 'it' ? 'it' : 'en';
+    return 'en'; // Public experience starts in English; Settings preserves the user's choice.
   });
 
   useEffect(() => {
