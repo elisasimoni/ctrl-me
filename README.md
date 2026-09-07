@@ -6,7 +6,7 @@
 you type the messy sentence you'd actually say out loud, and it comes back as a
 clean reminder, at the right time, in your tone.
 
-[**Live demo**](https://elisasimoni.github.io/ctrl-me/) · [Android APK](https://github.com/elisasimoni/ctrl-me/releases/latest)
+[**Live demo**](https://elisasimoni.github.io/ctrl-me/) · [**Open app**](https://elisasimoni.github.io/ctrl-me/#app) · [Android APK](https://github.com/elisasimoni/ctrl-me/releases/latest)
 
 ![React](https://img.shields.io/badge/React-18-0d0d0d?style=flat-square)
 ![Vite](https://img.shields.io/badge/Vite-5-0d0d0d?style=flat-square)
@@ -31,21 +31,32 @@ away the parts worth remembering.
 The other half of the idea is restraint. No streaks, no confetti, no 7am
 affirmations — one nudge, when it actually matters, and silence otherwise.
 
-## What it does
+## From a thought to a little breathing room
 
-| | |
+Open the app and capture your first thought immediately. No account or mandatory
+questionnaire. Try **“Presentation tomorrow at 10”**, then review the draft:
+
+1. Select the main event or a connected preparation node.
+2. Edit the title, date, time, repeat setting, or notes.
+3. Keep or drop the optional preparations. Nothing is saved until you confirm.
+4. Find your reminders under **Now**, **Later**, and **Can wait**. Complete,
+   snooze by ten minutes, or edit one; Undo restores the previous reminder.
+
+<img src=".github/assets/product-constellation.png" width="1000" alt="An editable constellation draft, with preparation nodes and explicit date and time fields">
+
+<img src=".github/assets/product-home.png" width="1000" alt="The calm home screen with Now, Later, and Can wait sections">
+
+| Feature | What to expect |
 |---|---|
-| **Natural-language capture** | One text field. Claude Haiku 4.5 returns a structured reminder: `{icon, tag, title, body, time, when}`. |
-| **Follow-up questions** | When something critical is missing (*"I have an exam tomorrow"* — when? which room?) it asks instead of guessing. |
-| **Constellations** | A request that implies several linked reminders ("help me get ready for my exam on Tuesday") is proposed as a cluster — parent plus children — that you accept, trim, or drop. |
-| **It learns your patterns** | The app logs what you complete, skip, and reschedule, then feeds a short summary back into the next call: reminders you keep dismissing, your most reliable time of day, habits that have become daily, candidates to archive. |
-| **Tone that adapts quietly** | A streak of completions makes it *terser*, not louder — and it is explicitly forbidden from ever mentioning the streak. |
-| **Real notifications** | Scheduled through the OS, with snooze, daily repeats, action buttons, and quiet hours. |
-| **Weather nudges** | Open-Meteo + geolocation: if rain is likely in the next six hours, it offers the umbrella. |
-| **Works with no AI at all** | With no API key it falls back to a local regex parser — still cleans the title, still finds the time. |
-| **Two design directions** | The same app in two skins, chosen by dragging a mascot left or right. |
-| **Bilingual** | English by default, with Italian available in Settings. |
-| **Installable** | PWA (offline-capable, add to home screen) and a real Android build via Capacitor. |
+| **Local capture** | English and Italian time expressions, today/tomorrow, weekdays, ISO dates, and explicit daily repeats. No API key required. |
+| **Optional preparations** | Local templates offer untimed preparations for presentations, interviews, exams, trains, flights, and trips. They are suggestions, not AI inference. |
+| **AI capture** | With your own key, Claude returns a structured draft and optional linked reminders. Follow-up questions appear in the review. |
+| **Review before saving** | All nodes are editable. A timed one-off reminder requires a date. Untimed items remain on your list without scheduling a notification. |
+| **A calmer home** | Today and overdue items in Now, future dates in Later, undated thoughts in Can wait. Filter by constellation. Completed items fold away. |
+| **Notifications** | Explicit opt-in, date-aware scheduling, ten-minute snooze, daily repeats, and quiet hours. Web requires the page to stay open; Android uses native scheduling. |
+| **Personalization** | Theme, language, tone, profile, and behavior summaries stay available in Settings and “Make this more you.” |
+| **Weather** | Optional Open-Meteo weather suggestions when both weather and location preferences are enabled. |
+| **Installable** | Offline-capable PWA and Capacitor Android app. Existing local reminders and preferences are retained. |
 
 ## Try the playground
 
@@ -91,28 +102,22 @@ user text ─┘
   reliable window: morning") — small enough to stay cheap, concrete enough for
   the model to act on.
 - **Graceful degradation is the default path, not an afterthought.** No key, a
-  network failure, or a malformed response all land in the same local parser, so
-  the app never surfaces an error — it just gets a little dumber.
+  network failure, or a malformed response all land in the same local parser, and the draft explains when local analysis was used. Requests time out after 20 seconds and close with the capture dialog.
 
 Worth reading: [`src/lib/llm.js`](src/lib/llm.js) (the prompt),
 [`src/lib/behavior.js`](src/lib/behavior.js) (the signals),
-[`src/components/AddSheet.jsx`](src/components/AddSheet.jsx) (the fallback).
+[`src/lib/planning.js`](src/lib/planning.js) (calendar dates and local drafts).
 
-## Two directions
+## One calm workspace, two themes
 
-The app ships two complete visual languages, chosen once at first launch by
-dragging the mascot — with spring physics and a velocity-based squish, because
-tapping a radio button would have been sad:
-
-- **OS** — mono, near-black, terminal-adjacent. Tags, timestamps, a blinking cursor.
-- **Pebble** — warm paper, an editorial serif/sans mix, rounded cards, a mascot with eyes.
-
-Both app themes keep their monochrome identity. The public playground adds soft sage and lime accents around an interactive phone preview.
+Warm paper, editorial type, sage details, and lime actions carry the playground’s
+identity into the real app. Switch to the dark theme from the header or Settings.
+Desktop has three spacious columns; mobile flows into a single readable list.
+Capture and review work with a keyboard and respect reduced-motion preferences.
 
 ## Stack
 
-- **React 18 + Vite 5** — no UI framework, no CSS framework; styles are inline and
-  the shared primitives live in [`src/atoms.jsx`](src/atoms.jsx).
+- **React 18 + Vite 5** — no UI framework, no CSS framework; the shared primitives live in [`src/atoms.jsx`](src/atoms.jsx).
 - **vite-plugin-pwa / Workbox** — installable, offline-capable.
 - **Capacitor 8** — Android wrapper. Notifications and geolocation go through
   native APIs when installed and browser APIs on the web;
@@ -127,6 +132,7 @@ Both app themes keep their monochrome identity. The public playground adds soft 
 ```bash
 npm install
 npm run dev      # http://localhost:5173
+npm test         # date parsing, recurrence, notification cancellation
 npm run build    # production build → dist/
 npm run preview  # serve the built PWA (open it on your phone to install)
 ```
@@ -152,38 +158,23 @@ npx cap open android          # or: cd android && ./gradlew assembleDebug
 Pushing a `v*.*.*` tag builds and publishes a debug APK via
 [`.github/workflows/release.yml`](.github/workflows/release.yml).
 
-## Project structure
+## Where to look
 
-```
-src/
-├── Showcase.jsx               English landing page and isolated interactive preview
-├── showcase.css               responsive playground styling and motion
-├── App.jsx                    theme picker → questionnaire → onboarding → home
-├── store.js                   reminders, prefs, profile, behaviour log (localStorage)
-├── i18n.jsx                   IT/EN dictionary, English default
-├── atoms.jsx                  logo, icon set, mascot, pills
-├── lib/
-│   ├── llm.js                 the Haiku call: cached system prompt, JSON schema
-│   ├── behavior.js            raw event log → short signals for the prompt
-│   ├── clusters.js            parent/child reminder grouping
-│   ├── apiKey.js              where the key comes from (runtime > build-time)
-│   └── useReminderNotifications.js   keeps the OS queue in sync with state
-├── native/                    one interface, two implementations (Capacitor / web)
-│   └── notifications.js  geo.js  weather.js  maps.js  calendar.js  memory.js
-├── screens/
-│   ├── DirA.jsx               direction A — "OS"
-│   └── DirB.jsx               direction B — "Pebble"
-└── components/
-    ├── AddSheet.jsx           capture sheet + local fallback parser
-    ├── ConstellationReveal.jsx   animated cluster proposal
-    ├── ConstellationGraph.jsx    cluster overview
-    ├── OnboardingQuestionnaire.jsx
-    ├── ThemeChooser.jsx       drag-to-pick, spring physics
-    ├── Settings.jsx           profile panel + config panel
-    └── WeatherBanner.jsx  ProfileInputs.jsx  PebbleHint.jsx
-```
+- [`src/App.jsx`](src/App.jsx): capture, settings, notifications, and Undo.
+- [`src/screens/CalmHome.jsx`](src/screens/CalmHome.jsx): first-use experience and three home sections.
+- [`src/components/ThoughtCapture.jsx`](src/components/ThoughtCapture.jsx): draft review and editable constellation.
+- [`src/lib/planning.js`](src/lib/planning.js): conservative local parsing and calendar dates.
+- [`src/native/notifications.js`](src/native/notifications.js): native/web scheduling, cancellation, and recurrence.
+- [`src/calm.css`](src/calm.css): shared light/dark product styling.
+- [`tests/planning.test.js`](tests/planning.test.js): automated planning and scheduling checks.
+
+Earlier visual explorations remain in `DirA`, `DirB`, `ThemeChooser`, and
+`ConstellationReveal`; the main app now uses the calm workspace above.
 
 ## Known limitations
+
+- **Local parsing is intentionally limited.** It does not understand arbitrary lists, natural-language calendar rules, or every date format. Review and edit the draft before saving.
+- **AI dates need review too.** Date extraction is conservative; dates that cannot be identified stay empty rather than being invented.
 
 - **The API key is client-side.** Whether it comes from `VITE_ANTHROPIC_API_KEY`
   at build time or from Settings at runtime, it lives in the browser — fine for a

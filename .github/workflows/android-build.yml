@@ -25,6 +25,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Test reminder planning and scheduling
+        run: npm test
+
       # No API key is baked into the APK: on a public repo the build artifact
       # is downloadable by anyone. The app asks for a key at runtime instead.
       - name: Build web assets

@@ -161,7 +161,7 @@ const SCHEMA = {
   additionalProperties: false,
 };
 
-export async function analyzeReminder({ text, lang, personality, profile, behavior }) {
+export async function analyzeReminder({ text, lang, personality, profile, behavior, signal, persistMemory = true }) {
   const c = client();
   if (!c) throw new Error('LLM not configured');
 
@@ -175,7 +175,7 @@ export async function analyzeReminder({ text, lang, personality, profile, behavi
     system: [{ type: 'text', text: SYSTEM_PROMPT, cache_control: { type: 'ephemeral' } }],
     messages: [{ role: 'user', content: userContent }],
     output_config: { format: { type: 'json_schema', schema: SCHEMA } },
-  });
+  }, { signal });
 
   const block = response.content.find(b => b.type === 'text');
   if (!block) throw new Error('No text in response');
@@ -185,7 +185,7 @@ export async function analyzeReminder({ text, lang, personality, profile, behavi
   if (!result.cluster) result.cluster = { propose: false, why: '', children: [] };
 
   // Persist new facts for future calls
-  (result.new_facts ?? []).forEach(f => addFact(f));
+  if (persistMemory) (result.new_facts ?? []).forEach(f => addFact(f));
 
   return result;
 }

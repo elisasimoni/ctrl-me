@@ -2,24 +2,26 @@
 // - Native (Capacitor): LocalNotifications — works even when the app is killed.
 // - Web: Notification API + setTimeout — only while the tab/PWA is open.
 
-import { isNative } from './platform.js';
+import { isNative } from "./platform.js";
+import { localDate, validDate } from "../lib/planning.js";
 
 // ─── permission ────────────────────────────────────────────
 let cachedPermission = null;
 
 export async function ensurePermission() {
-  if (cachedPermission !== null) return cachedPermission;
   try {
     if (isNative()) {
-      const { LocalNotifications } = await import('@capacitor/local-notifications');
+      const { LocalNotifications } = await import(
+        "@capacitor/local-notifications"
+      );
       const result = await LocalNotifications.requestPermissions();
-      cachedPermission = result.display === 'granted';
-    } else if (typeof window !== 'undefined' && 'Notification' in window) {
-      if (Notification.permission === 'default') {
+      cachedPermission = result.display === "granted";
+    } else if (typeof window !== "undefined" && "Notification" in window) {
+      if (Notification.permission === "default") {
         const result = await Notification.requestPermission();
-        cachedPermission = result === 'granted';
+        cachedPermission = result === "granted";
       } else {
-        cachedPermission = Notification.permission === 'granted';
+        cachedPermission = Notification.permission === "granted";
       }
     } else {
       cachedPermission = false;
@@ -31,7 +33,9 @@ export async function ensurePermission() {
 }
 
 export const requestPermission = ensurePermission;
-export function getPermissionState() { return cachedPermission; }
+export function getPermissionState() {
+  return cachedPermission;
+}
 
 // ─── id / time helpers ────────────────────────────────────
 const MAX_INT32 = 2147483647;
@@ -41,39 +45,73 @@ export function notifIdFor(id) {
 }
 
 // Next firing Date for a reminder. Null if no time.
-export function nextFireForReminder(reminder) {
+export function nextFireForReminder(reminder, now = new Date()) {
   if (!reminder?.time) return null;
   const m = /^(\d{1,2}):(\d{2})$/.exec(reminder.time);
   if (!m) return null;
-  const hh = parseInt(m[1], 10);
-  const mm = parseInt(m[2], 10);
-  if (hh < 0 || hh > 23 || mm < 0 || mm > 59) return null;
-  const now = new Date();
-  const at = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hh, mm, 0, 0);
-  if (at.getTime() <= now.getTime() + 5000) {
+  const hh = Number(m[1]),
+    mm = Number(m[2]);
+  if (hh > 23 || mm > 59) return null;
+  const daily = isDailyReminder(reminder);
+  if (reminder.done && !daily) return null;
+  if (reminder.date && !validDate(reminder.date)) return null;
+  // Legacy time-only reminders retain their next-occurrence behavior.
+  let at = reminder.date
+    ? new Date(`${reminder.date}T00:00:00`)
+    : new Date(now);
+  if (daily && (!reminder.date || reminder.date < localDate(now)))
+    at = new Date(now);
+  at.setHours(hh, mm, 0, 0);
+  if (daily && reminder.done && reminder.completedOn === localDate(now)) {
+    at = new Date(now);
+    at.setDate(at.getDate() + 1);
+    at.setHours(hh, mm, 0, 0);
+  }
+  if (at.getTime() <= now.getTime()) {
+    if (reminder.date && !daily) return null;
     at.setDate(at.getDate() + 1);
   }
   return at;
 }
 
-// True if the reminder is a daily-recurring one (tag or title hint).
 export function isDailyReminder(reminder) {
-  const blob = `${reminder?.tag || ''} ${reminder?.title || ''}`.toUpperCase();
+  if (reminder?.repeat) return reminder.repeat === "daily";
+  const blob = `${reminder?.tag || ""} ${reminder?.title || ""}`.toUpperCase();
   return /OGNI GIORNO|EVERY ?DAY|DAILY|GIORNALIE/.test(blob);
+}
+
+// Check without opening a permission prompt. Requests belong to explicit user actions.
+export async function checkPermission() {
+  try {
+    if (isNative()) {
+      const { LocalNotifications } = await import(
+        "@capacitor/local-notifications"
+      );
+      return (
+        (await LocalNotifications.checkPermissions()).display === "granted"
+      );
+    }
+    return (
+      typeof Notification !== "undefined" &&
+      Notification.permission === "granted"
+    );
+  } catch {
+    return false;
+  }
 }
 
 // Push a timestamp out of the user's sleep window. If `at` falls
 // during the quiet hours [sleepHour, wakeHour), advance to wakeHour.
 // Handles wrap (sleep 23, wake 8: quiet is 23–24 + 0–8).
 export function applyQuietHours(at, wakeHour, sleepHour) {
-  if (typeof wakeHour !== 'number' || typeof sleepHour !== 'number') return at;
+  if (typeof wakeHour !== "number" || typeof sleepHour !== "number") return at;
   if (wakeHour === sleepHour) return at; // pathological: no quiet window
   const d = new Date(at);
   const h = d.getHours();
   const wraps = sleepHour > wakeHour;
   const inQuiet = wraps
-    ? (h >= sleepHour || h < wakeHour)
-    : (h >= sleepHour && h < wakeHour);
+    ? h >= sleepHour || h < wakeHour
+    : h >= sleepHour && h < wakeHour;
   if (!inQuiet) return at;
   const adjusted = new Date(d);
   if (wraps && h >= sleepHour) adjusted.setDate(adjusted.getDate() + 1);
@@ -85,34 +123,45 @@ export function applyQuietHours(at, wakeHour, sleepHour) {
 let actionTypesRegistered = false;
 let actionListenerRemove = null;
 
-export async function registerNotificationActions({ doneLabel, snoozeLabel } = {}) {
+export async function registerNotificationActions({
+  doneLabel,
+  snoozeLabel,
+} = {}) {
   if (!isNative()) return;
   try {
-    const { LocalNotifications } = await import('@capacitor/local-notifications');
+    const { LocalNotifications } = await import(
+      "@capacitor/local-notifications"
+    );
     await LocalNotifications.registerActionTypes({
-      types: [{
-        id: 'REMINDER_ACTIONS',
-        actions: [
-          { id: 'done',   title: doneLabel ?? 'Done' },
-          { id: 'snooze', title: snoozeLabel ?? 'Snooze' },
-        ],
-      }],
+      types: [
+        {
+          id: "REMINDER_ACTIONS",
+          actions: [
+            { id: "done", title: doneLabel ?? "Done" },
+            { id: "snooze", title: snoozeLabel ?? "Snooze" },
+          ],
+        },
+      ],
     });
     if (actionListenerRemove) {
-      try { actionListenerRemove.remove(); } catch {}
+      try {
+        actionListenerRemove.remove();
+      } catch {}
       actionListenerRemove = null;
     }
     actionListenerRemove = await LocalNotifications.addListener(
-      'localNotificationActionPerformed',
+      "localNotificationActionPerformed",
       (event) => {
         const detail = {
           actionId: event.actionId,
           reminderId: event.notification?.extra?.reminderId,
         };
-        if (typeof window !== 'undefined') {
-          window.dispatchEvent(new CustomEvent('ctrlme.notif.action', { detail }));
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(
+            new CustomEvent("ctrlme.notif.action", { detail }),
+          );
         }
-      }
+      },
     );
     actionTypesRegistered = true;
   } catch {
@@ -122,46 +171,82 @@ export async function registerNotificationActions({ doneLabel, snoozeLabel } = {
 
 // ─── low level schedule / cancel ──────────────────────────
 
+const webTimers = new Map();
+const MAX_DELAY = 2147483647;
+
 async function rawSchedule({ id, title, body, at, repeats, extra }) {
   if (isNative()) {
-    const { LocalNotifications } = await import('@capacitor/local-notifications');
+    const { LocalNotifications } = await import(
+      "@capacitor/local-notifications"
+    );
     const notification = {
       id,
       title,
       body,
       schedule: { at: new Date(at) },
-      smallIcon: 'ic_stat_icon_config_sample',
+      smallIcon: "ic_stat_icon_config_sample",
     };
     if (repeats) {
       notification.schedule.repeats = true;
-      notification.schedule.every = 'day';
+      notification.schedule.every = "day";
     }
     if (actionTypesRegistered) {
-      notification.actionTypeId = 'REMINDER_ACTIONS';
+      notification.actionTypeId = "REMINDER_ACTIONS";
     }
     if (extra) notification.extra = extra;
     await LocalNotifications.schedule({ notifications: [notification] });
     return;
   }
-  // Web fallback — setTimeout, dies when page closes. No repeats.
-  const delay = at - Date.now();
-  if (delay < 0) return;
-  setTimeout(() => {
-    if (typeof Notification === 'undefined') return;
-    if (Notification.permission !== 'granted') return;
-    new Notification(title, { body, icon: `${import.meta.env.BASE_URL}icon.svg`, tag: String(id) });
-  }, delay);
+  // Long delays are chunked so browser timeout overflow cannot fire them immediately.
+  clearTimeout(webTimers.get(id));
+  const tick = () => {
+    const delay = at - Date.now();
+    if (delay > 0) {
+      webTimers.set(id, setTimeout(tick, Math.min(delay, MAX_DELAY)));
+      return;
+    }
+    webTimers.delete(id);
+    if (
+      typeof Notification === "undefined" ||
+      Notification.permission !== "granted"
+    )
+      return;
+    try {
+      new Notification(title, {
+        body,
+        icon: `${import.meta.env?.BASE_URL ?? "/"}icon.svg`,
+        tag: String(id),
+      });
+    } catch {
+      /* Some mobile browsers require a service worker notification. */
+    }
+    if (repeats) {
+      const next = new Date(at);
+      next.setDate(next.getDate() + 1);
+      at = next.getTime();
+      tick();
+    }
+  };
+  if (at >= Date.now()) tick();
 }
 
 async function rawCancel(id) {
+  clearTimeout(webTimers.get(id));
+  webTimers.delete(id);
   if (isNative()) {
-    const { LocalNotifications } = await import('@capacitor/local-notifications');
+    const { LocalNotifications } = await import(
+      "@capacitor/local-notifications"
+    );
     await LocalNotifications.cancel({ notifications: [{ id }] });
   }
 }
 
-export async function scheduleNotification(args) { return rawSchedule(args); }
-export async function cancelNotification(id) { return rawCancel(id); }
+export async function scheduleNotification(args) {
+  return rawSchedule(args);
+}
+export async function cancelNotification(id) {
+  return rawCancel(id);
+}
 
 // ─── high level: reminder-centric API ─────────────────────
 
@@ -178,8 +263,8 @@ export async function scheduleReminder(reminder, profile) {
   if (!granted) return false;
   await rawSchedule({
     id: notifIdFor(reminder.id),
-    title: reminder.title || 'CTRL+Me',
-    body: reminder.body || '',
+    title: reminder.title || "CTRL+Me",
+    body: reminder.body || "",
     at,
     repeats: isDailyReminder(reminder),
     extra: { reminderId: reminder.id },
@@ -197,9 +282,10 @@ export async function cancelReminder(reminder) {
 export async function scheduleWeatherNudge({ rainProbability, temp, lang }) {
   const granted = await ensurePermission();
   if (!granted) return;
-  const title = lang === 'it' ? 'Ombrello. Fidati.' : 'Umbrella. Trust me.';
-  const body = lang === 'it'
-    ? `Pioggia al ${rainProbability}% nelle prossime ore. ${temp}°C fuori.`
-    : `Rain at ${rainProbability}% in the next few hours. ${temp}°C outside.`;
+  const title = lang === "it" ? "Ombrello. Fidati." : "Umbrella. Trust me.";
+  const body =
+    lang === "it"
+      ? `Pioggia al ${rainProbability}% nelle prossime ore. ${temp}°C fuori.`
+      : `Rain at ${rainProbability}% in the next few hours. ${temp}°C outside.`;
   await rawSchedule({ id: 9001, title, body, at: Date.now() + 1000 });
 }

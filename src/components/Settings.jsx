@@ -22,7 +22,7 @@ export function Settings({ open, mode = 'profile', onClose, store }) {
   if (!open) return null;
   const isProfile = mode === 'profile';
   const isConfig  = mode === 'config';
-  const { state, setPref, setProfile, reset, resetOnboarding, clearReminders, clearBehaviorLog } = store;
+  const { state, setPref, setProfile, reset, clearReminders, clearBehaviorLog } = store;
   const clusterCount = listClusters(state.reminders).length;
   const stats = behaviorStats(state.behaviorLog);
   const dir = state.prefs.direction;
@@ -36,11 +36,6 @@ export function Settings({ open, mode = 'profile', onClose, store }) {
   const setTone = (v) => {
     setProfile({ tone: v });
     setPref('personality', v);
-  };
-
-  const handleRedo = () => {
-    resetOnboarding();
-    onClose();
   };
 
   const handleWipe = () => {
@@ -285,7 +280,6 @@ export function Settings({ open, mode = 'profile', onClose, store }) {
         {/* Danger zone — config */}
         {isConfig && (
         <Section tok={tok} label={t('settings.section.danger')}>
-          <DangerLink tok={tok} onClick={handleRedo} label={t('settings.redoOnboarding')} />
           <DangerLink tok={tok} onClick={() => { if (confirmReminders(lang)) clearReminders(); }}
             label={t('settings.clearReminders')} />
           <DangerLink tok={tok} onClick={() => { if (confirmWipe(lang)) handleWipe(); }}
